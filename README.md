@@ -31,27 +31,30 @@ verification session. You receive on a cheap spare Android phone or a Raspberry 
 - **DDoS economics flip** onto the attacker, and abusive senders are auto-blocked.
 - **One spare phone is enough to start.**
 
-```
-  End user's phone                 Your receiver                    Your backend
-  ┌──────────────┐  SMS / call /  ┌──────────────┐   signed HTTPS  ┌──────────────┐
-  │  enters code │ ─ missed call ─▶  Android app  │ ──────────────▶ │  Coordinator │
-  │  from screen │    / DTMF       │  or Pi + SIM │                 │  + your SDK  │
-  └──────────────┘                 └──────────────┘                 └──────────────┘
-         ▲                                                                  │
-         └──────────────────  "verified" pushed back to the UI  ◀───────────┘
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/flow.png" width="760" alt="Flow: the end user sends an SMS, missed call, or DTMF from the number being verified to your receiver (a spare Android phone or Pi); the receiver reports the sender and code to your backend over signed HTTPS; the verified result is pushed back to your app, and the verified number is the sender." />
+</p>
 
 ## Screenshots
 
 ### End-user experience
 
-What the person verifying sees: a channel chooser, a per-channel instruction with a tap-to-send
-deep link and a live countdown, and a verified state.
+What the person verifying sees: a channel chooser, then a per-channel instruction with a
+tap-to-send deep link and a live countdown, and finally a verified state. The same widget renders
+all three channels — text a code, give a missed call, or call and enter a code.
 
 <p>
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-chooser.png" width="300" alt="Channel chooser: text us a code, or give a missed call" />
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-sms.png" width="300" alt="SMS instruction with the code as digit chips and an Open messages button" />
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-success.png" width="300" alt="Verified success state showing the verified number" />
+</p>
+
+The missed-call and DTMF flows. Missed call costs the user nothing (it never connects); DTMF has
+the user enter the on-screen code on the keypad during a call.
+
+<p>
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-call.png" width="300" alt="Missed-call instruction: give a quick missed call, with the number, three steps, and a Call now button" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-dtmf.png" width="300" alt="DTMF instruction: call the number and enter the code on the keypad" />
 </p>
 
 ### Self-hosted console
