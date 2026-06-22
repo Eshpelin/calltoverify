@@ -167,12 +167,14 @@ func (s *pgStore) PickNumber(ctx context.Context, channel string) (Number, error
 	if isVoiceChannel(channel) {
 		excl = ` AND NOT EXISTS (SELECT 1 FROM sessions sv WHERE sv.number_id = n.id AND sv.status = 'pending' AND sv.channel IN ('call','dtmf'))`
 	}
+	// Skip numbers already at the pending-session cap.
+	capFilter := fmt.Sprintf(` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status = 'pending') < %d`, MaxPendingPerNumber)
 	var n Number
 	err := s.pool.QueryRow(ctx,
 		`SELECT n.id, n.device_id, n.msisdn, n.channels, n.status, n.created_at
 		 FROM numbers n
 		 JOIN devices d ON d.id = n.device_id
-		 WHERE n.status = 'active' AND d.status = 'online' AND $1 = ANY(n.channels)`+excl+`
+		 WHERE n.status = 'active' AND d.status = 'online' AND $1 = ANY(n.channels)`+excl+capFilter+`
 		 ORDER BY (SELECT count(*) FROM sessions s WHERE s.number_id = n.id AND s.status = 'pending') ASC,
 		          random()
 		 LIMIT 1`, channel,
