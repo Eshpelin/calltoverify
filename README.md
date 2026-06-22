@@ -232,8 +232,9 @@ const v = await ctv.startVerification({ channel: "sms" }); // show v.instruction
 const s = await ctv.checkStatus(v.sessionId);              // or verify the signed webhook
 ```
 
-Full walkthrough: [`docs/getting-started.md`](docs/getting-started.md). A runnable Node + browser
-example is in [`examples/node-web`](examples/node-web).
+Full setup walkthrough: [`docs/getting-started.md`](docs/getting-started.md). The actual front-end +
+back-end code to wire it into your app: [`docs/integration.md`](docs/integration.md). A runnable
+Node + browser example is in [`examples/node-web`](examples/node-web).
 
 ## How you add a phone (and where the SIM number comes from)
 
