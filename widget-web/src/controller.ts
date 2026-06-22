@@ -7,6 +7,8 @@
  * not to the Coordinator directly, so your API key never reaches the browser.
  */
 
+export type Channel = "sms" | "call" | "dtmf";
+
 export type VerificationState = "idle" | "pending" | "verified" | "expired" | "error";
 
 export interface Instructions {
@@ -29,8 +31,8 @@ export interface StatusResult {
 }
 
 export interface ControllerOptions {
-  /** Begin a verification (proxied through your backend). */
-  start: () => Promise<StartResult>;
+  /** Begin a verification for the chosen channel (proxied through your backend). */
+  start: (channel?: Channel) => Promise<StartResult>;
   /** Fetch the current status for a session (proxied through your backend). */
   status: (sessionId: string) => Promise<StatusResult>;
 }
@@ -38,13 +40,14 @@ export interface ControllerOptions {
 type Listener = (payload?: unknown) => void;
 
 export interface Controller {
-  begin(): Promise<void>;
+  begin(channel?: Channel): Promise<void>;
   poll(): Promise<VerificationState>;
+  reset(): void;
   state(): VerificationState;
   sessionId(): string | undefined;
   instructions(): Instructions | undefined;
   verifiedMsisdn(): string | undefined;
-  on(event: "instructions" | "verified" | "expired" | "error", cb: Listener): void;
+  on(event: "instructions" | "verified" | "expired" | "error" | "reset", cb: Listener): void;
 }
 
 export function createController(opts: ControllerOptions): Controller {
@@ -63,10 +66,10 @@ export function createController(opts: ControllerOptions): Controller {
       (listeners[event] ??= []).push(cb);
     },
 
-    async begin() {
+    async begin(channel) {
       if (state !== "idle") return;
       try {
-        const r = await opts.start();
+        const r = await opts.start(channel);
         sessionId = r.sessionId;
         instr = r.instructions;
         state = "pending";
@@ -94,6 +97,14 @@ export function createController(opts: ControllerOptions): Controller {
         emit("error", err);
       }
       return state;
+    },
+
+    reset() {
+      state = "idle";
+      sessionId = undefined;
+      instr = undefined;
+      verified = undefined;
+      emit("reset");
     },
 
     state: () => state,

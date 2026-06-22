@@ -1,50 +1,86 @@
 # @calltoverify/widget
 
-Embeddable web widget for CallToVerify. It renders the verification instruction
-("Send `4729` to `017…`") with a tap-to-send deep link and a countdown, polls status, and flips
-to a success state when the number is verified.
+The embeddable web widget for CallToVerify. It renders the full end-user experience: an optional
+channel chooser, the per-channel instruction ("Send `4729` to `017…`", "give a missed call", or
+"call and enter the code") with a tap-to-send deep link and a live countdown, status polling, and
+the success / expired states. Bold, branded, and fully themeable.
 
-> **Status: alpha (Phase 1 implemented).**
+> **Status: alpha (Phase 1 + multi-channel UX).**
 
 ## How it talks to the backend
 
 The widget calls **your** backend, never the Coordinator directly, so your API key stays on the
-server. You provide two callbacks: `start` (your backend calls the Node SDK's `startVerification`)
-and `status` (your backend calls `checkStatus`).
+server. You provide `start` (your backend calls the engine / SDK's start) and `status`.
 
 ```ts
 import { mount } from "@calltoverify/widget";
 
 mount("#verify", {
-  start: async () => {
-    const res = await fetch("/api/verify/start", { method: "POST" });
+  // Offer one or more channels. With more than one, a chooser is shown first.
+  channels: ["sms", "call"],
+
+  start: async (channel) => {
+    const res = await fetch("/api/verify/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ channel }),
+    });
     return res.json(); // -> { sessionId, instructions: { number, code, channel, action, deepLink, expiresAt } }
   },
   status: async (sessionId) => {
     const res = await fetch(`/api/verify/status?id=${encodeURIComponent(sessionId)}`);
     return res.json(); // -> { status, verifiedMsisdn? }
   },
+
   onVerified: (msisdn) => {
-    console.log("verified:", msisdn);
     // advance your UI
   },
 });
 ```
 
-Style the `.ctv-widget`, `.ctv-action`, `.ctv-button`, `.ctv-countdown`, `.ctv-status`,
-`.ctv-success`, and `.ctv-expired` classes to taste.
+## Theming (bold & branded by default)
+
+Re-theme by overriding `--ctv-*` CSS variables, either globally in your CSS or per-mount:
+
+```ts
+mount("#verify", {
+  /* ... */
+  theme: {
+    "--ctv-brand": "#0ea5e9",
+    "--ctv-radius": "12px",
+  },
+});
+```
+
+Key tokens: `--ctv-brand`, `--ctv-brand-strong`, `--ctv-on-brand`, `--ctv-bg`, `--ctv-surface`,
+`--ctv-text`, `--ctv-muted`, `--ctv-success`, `--ctv-radius`. Dark mode is automatic via
+`prefers-color-scheme`.
+
+## Translating / re-voicing
+
+Pass `labels` to override any string (each is either a string or a small function):
+
+```ts
+mount("#verify", {
+  /* ... */
+  labels: {
+    title: "Verifica tu número",
+    smsButton: "Abrir mensajes",
+  },
+});
+```
 
 ## Headless controller
 
-If you want to build your own UI, use the controller directly:
+To build your own UI, use the controller directly:
 
 ```ts
 import { createController } from "@calltoverify/widget/controller";
 
 const ctrl = createController({ start, status });
 ctrl.on("verified", (m) => {/* ... */});
-await ctrl.begin();
-// call ctrl.poll() on your own schedule
+await ctrl.begin("sms");
+// call ctrl.poll() on your own schedule; ctrl.reset() to start over
 ```
 
 ## Develop
