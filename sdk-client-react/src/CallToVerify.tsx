@@ -214,8 +214,14 @@ function Instr(props: {
   }
   return (
     <>
-      <p className="ctv-action">{L.dtmfAction(instr.number, instr.code ?? "")}</p>
-      <p className="ctv-num">{instr.number}</p>
+      <p className="ctv-action">{L.dtmfAction(instr.number)}</p>
+      <div className="ctv-code">
+        {(instr.code ?? "").split("").map((d, i) => (
+          <span key={i} className="ctv-digit">
+            {d}
+          </span>
+        ))}
+      </div>
       <a className="ctv-btn" href={instr.deepLink}>
         <IconCall />
         {L.dtmfButton}
