@@ -35,10 +35,11 @@ func main() {
 	// The receiver app posts here (pair it with the QR from the wizard).
 	mux.Handle("/ctv/", eng.DeviceHandler("/ctv"))
 
-	// Root catch-all serves the console SPA. Registered without a method so it does
-	// not conflict with the all-method "/ctv/" subtree.
+	// Root catch-all serves the console SPA (also at /setup, the guided onboarding
+	// entry point). Registered without a method so it does not conflict with the
+	// all-method "/ctv/" subtree.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
+		if r.URL.Path != "/" && r.URL.Path != "/setup" {
 			http.NotFound(w, r)
 			return
 		}

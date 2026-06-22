@@ -1,0 +1,10 @@
+{
+  "name": "calltoverify-node-web-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Example: a Node backend using @calltoverify/sdk against a standalone Coordinator.",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
