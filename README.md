@@ -2,7 +2,7 @@
 
 # CallToVerify
 
-**Free, self-hosted phone number verification. The user contacts you, not the other way around.**
+**Self-hosted phone number verification. The person verifying contacts a phone you control, instead of you sending them an OTP.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](#project-status)
@@ -26,8 +26,8 @@ blocked, gateways demand large upfront fees for a masked sender, and the APIs ar
 signal to a phone number *you* control. A code shown on their screen binds that signal to a
 verification session. You receive on a cheap spare Android phone or a Raspberry Pi with a SIM.
 
-- **Receiving SMS and calls is free.** No gateway, no masked-sender fee, no send-side blocking.
-- **The cost moves to the user** (one SMS, or a free missed call).
+- **Receiving costs you nothing.** No SMS gateway, no masked-sender fee, no send-side blocking.
+- **The per-verification cost moves to the end user** — one text message, or a missed call that never connects.
 - **DDoS economics flip** onto the attacker, and abusive senders are auto-blocked.
 - **One spare phone is enough to start.**
 
@@ -46,7 +46,7 @@ verification session. You receive on a cheap spare Android phone or a Raspberry 
 ### End-user experience
 
 What the person verifying sees: a channel chooser, a per-channel instruction with a tap-to-send
-deep link and a live countdown, and a verified state. No code to wait for.
+deep link and a live countdown, and a verified state.
 
 <p>
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-chooser.png" width="300" alt="Channel chooser: text us a code, or give a missed call" />
@@ -75,27 +75,47 @@ the endpoint, provisioned numbers, and recent inbound activity.
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/android-connected.png" width="260" alt="Android connected status screen" />
 </p>
 
-## How verification works
+## How it works
 
-1. Your backend calls the SDK: `startVerification()`.
-2. The **Coordinator** picks an available number from your pool, generates a short code, and
-   returns instructions.
-3. The user's screen shows: *"Send `4729` to `017XXXXXXXX`"* with a tap-to-send deep link.
-4. The user sends it. Your **receiver** captures the inbound signal and posts a signed event.
-5. The Coordinator matches `(number, code)`, marks the session verified, and the result is
-   pushed back to your UI and your backend webhook.
+You run a **receiver** — a spare Android phone or a Raspberry Pi with a SIM — and you tell
+CallToVerify that SIM's phone number. From then on:
 
-The code lets one number serve many simultaneous verifications. The verified phone number can
-be **derived** from the sender, or **claimed** up front and matched. See
-[`docs/channels.md`](docs/channels.md).
+1. A user needs to verify their phone in your app. Your backend calls `startVerification()`.
+2. CallToVerify picks one of your receiver numbers and a short code, and returns instructions
+   like *"Text `4729` to `017XXXXXXXX`"* (with a tap-to-send deep link).
+3. The user sends that text — or gives a missed call, or calls and types the code — from the
+   phone they are verifying.
+4. The receiver on that SIM captures the inbound signal (the sender's number and the code) and
+   reports it to your backend over signed HTTPS.
+5. Your backend matches `(number, code)`, marks the session **verified**, and you find out via a
+   callback (embedded engine) or a webhook (standalone). The verified phone number is the sender.
+
+You never send an SMS, and no code leaves your infrastructure. One number can run many SMS
+verifications at once (the code disambiguates them).
+
+## Concepts
+
+| Term | Meaning |
+|---|---|
+| **Receiver** (device) | The spare Android phone or Raspberry Pi that holds a SIM and listens for inbound SMS/calls. |
+| **Number** (MSISDN) | A receiver SIM's phone number, in your pool. **You provide it when you pair the receiver** — see [How you add a phone](#how-you-add-a-phone-and-where-the-sim-number-comes-from). |
+| **Channel** | How the user reaches the receiver: `sms` (text a code), `call` (missed call), or `dtmf` (call and type the code). |
+| **Binding mode** | `derive` — the verified number is whoever the inbound came from (best for sign-up). `claim` — you pass the number up front and the inbound must come from it. |
+| **Session** | One verification attempt: `pending` → `verified` / `expired`. |
+| **Pairing** | Linking a receiver to your backend by scanning a QR. |
 
 ## Channels
 
-| Channel | What the user does | Android | Raspberry Pi | Binding |
+| Channel | What the user does | Cost to the user | Android receiver | Pi receiver |
 |---|---|---|---|---|
-| **SMS + code** | Sends an SMS containing the code | Yes | Yes | derive or claim |
-| **Missed call** | Gives a free missed call | Yes | Yes | claim only |
-| **DTMF on call** | Calls and types the code | No (audio locked) | Yes (Asterisk) | derive or claim |
+| **SMS + code** | Texts the code to your number | one SMS | yes | yes |
+| **Missed call** | Calls your number, hangs up before it connects | none | yes | yes |
+| **DTMF on call** | Calls your number and types the code | one call | no | yes (via Asterisk) |
+
+> **Why no DTMF on Android?** Reading the keypad tones means reading the live call audio, which
+> Android blocks for apps (since Android 10). On a Raspberry Pi, Asterisk owns the call, so DTMF
+> works there. SMS and missed call work on both receivers. Binding: missed call is `claim` only
+> (no code travels with the call); SMS and DTMF support both `derive` and `claim`.
 
 ## Repository layout
 
@@ -111,42 +131,151 @@ be **derived** from the sender, or **claimed** up front and matched. See
 | [`sdk-client-flutter/`](sdk-client-flutter) | Mobile client SDK | Flutter |
 | [`docs/`](docs) | Documentation | — |
 
-## Quick start
+## Quick start — embed in your Go backend
 
-### Embed it in your Go backend (no separate service, no database to run)
+The simplest path: add the engine to your own Go server. There is no separate service to run, and
+**no database to set up** — it uses an embedded SQLite file by default (point it at Postgres when
+you need scale).
+
+**1. Add the dependency**
+
+```bash
+go get github.com/Eshpelin/calltoverify/coordinator/engine
+```
+
+**2. Create the engine and mount the receiver endpoint**
 
 ```go
 import ctv "github.com/Eshpelin/calltoverify/coordinator/engine"
 
-eng, _ := ctv.New(ctx, ctv.Options{
-    OnVerified: func(ev ctv.Event) { /* mark the user verified */ },
+eng, err := ctv.New(ctx, ctv.Options{
+    // SQLitePath defaults to "calltoverify.db". Set PostgresDSN for Postgres,
+    // RedisURL to share rate-limit/nonce across multiple instances.
+    OnVerified: func(ev ctv.Event) {
+        // ev.VerifiedMSISDN is a verified phone number for this session — mark the user verified.
+    },
 })
-mux.Handle("/ctv/", eng.DeviceHandler("/ctv")) // the receiver app posts here
+defer eng.Close()
 
-// in your signup handler:
-v, _ := eng.StartVerification(ctx, ctv.Params{Channel: "sms"})
-// show v.Instructions to the user; poll eng.Status or use OnVerified
+mux.Handle("/ctv/", eng.DeviceHandler("/ctv")) // the receiver app posts inbound signals here
 ```
 
-SQLite is the default, so there is nothing else to run. Enroll a spare phone with
-`eng.NewPairing(...)`, which returns a QR payload the Android app scans.
+**3. Pair a spare phone** — tell the engine the SIM's number and channels, then show the QR to
+scan with the [Android app](receiver-android):
 
-Two runnable examples: a minimal API in [`coordinator/examples/embedded`](coordinator/examples/embedded),
-and a full **self-hosted console** in [`coordinator/examples/dashboard`](coordinator/examples/dashboard)
-(`go run ./examples/dashboard`) — a guided wizard to pair a phone, run a test verification, and a
-live dashboard of receivers and recent verifications.
+```go
+p, _ := eng.NewPairing(ctx, ctv.PairingParams{
+    Endpoint: "https://your-backend.example.com/ctv", // where you mounted DeviceHandler
+    Name:     "front-desk phone",
+    MSISDN:   "+8801700000001",         // the SIM's phone number — you provide it
+    Channels: []string{"sms", "call"},
+})
+// Render p.QRPayload as a QR code; scan it with the app. The phone is now online and in your pool.
+```
 
-### Or run the standalone Coordinator (for non-Go backends)
+**4. Verify a user**
+
+```go
+v, err := eng.StartVerification(ctx, ctv.Params{Channel: "sms"})
+// Show v.Instructions (number, code, a tap-to-send deep link) to the user.
+// Render it with a front-end SDK (below) and poll eng.Status, or wait for OnVerified.
+```
+
+Don't want to wire anything yet? `go run ./coordinator/examples/dashboard` opens a **console** at
+`http://localhost:8080/setup`: a form to pair a phone (enter the SIM number, scan the QR), a button
+to run a test verification, and a live dashboard. A bare API example is in
+[`coordinator/examples/embedded`](coordinator/examples/embedded).
+
+## Quick start — non-Go backends (standalone Coordinator)
+
+If your backend isn't Go, run the Coordinator as a service and talk to it with a language SDK.
+
+**1. Run it**
 
 ```bash
-git clone https://github.com/Eshpelin/calltoverify.git
-cd calltoverify
-docker compose up --build
-curl http://localhost:8080/healthz
+git clone https://github.com/Eshpelin/calltoverify.git && cd calltoverify
+docker compose up --build          # Coordinator + Postgres + Redis
 ```
 
-Then use a backend SDK ([Node](sdk-server-node), [Python](sdk-server-python)) against its REST
-API. Full guide: [`docs/getting-started.md`](docs/getting-started.md).
+**2. Create an app** (the admin token is set in `docker-compose.yml`):
+
+```bash
+curl -s -X POST localhost:8080/admin/apps \
+  -H 'Authorization: Bearer dev-admin-change-me' -d '{"name":"my-app"}'
+# -> { "app_id": "...", "api_key": "ctv_...", "webhook_secret": "..." }   (save the api_key)
+```
+
+**3. Register a receiver and its number**
+
+```bash
+curl -s -X POST localhost:8080/admin/devices -H 'Authorization: Bearer dev-admin-change-me' \
+  -d '{"app_id":"APP_ID","name":"front-desk phone","type":"android","capabilities":["sms"]}'
+# -> { "device_id": "...", "device_secret": "..." }
+
+curl -s -X POST localhost:8080/admin/numbers -H 'Authorization: Bearer dev-admin-change-me' \
+  -d '{"device_id":"DEVICE_ID","msisdn":"+8801700000001","channels":["sms"]}'
+```
+
+**4. Pair the phone** with the JSON `{"endpoint":"http://<host>/v1","device_id":"...","device_secret":"..."}`
+(encode it as a QR and scan), then call the API from your app with a backend SDK:
+
+```ts
+import { CallToVerify } from "@calltoverify/sdk";          // Node — also Python and PHP
+const ctv = new CallToVerify({ baseUrl: "http://localhost:8080", apiKey: "ctv_..." });
+const v = await ctv.startVerification({ channel: "sms" }); // show v.instructions to the user
+const s = await ctv.checkStatus(v.sessionId);              // or verify the signed webhook
+```
+
+Full walkthrough: [`docs/getting-started.md`](docs/getting-started.md). A runnable Node + browser
+example is in [`examples/node-web`](examples/node-web).
+
+## How you add a phone (and where the SIM number comes from)
+
+This is the part people ask about, so to be explicit: **you tell CallToVerify the SIM's phone
+number — the app does not.** Reading a SIM's own number off Android is unreliable, so you provide
+it when you pair the receiver:
+
+- **Embedded (Go):** pass `MSISDN` to `eng.NewPairing(...)` (step 3 above).
+- **Console wizard:** open `/setup`, type the SIM number into the pairing form, generate the QR.
+- **Standalone:** `POST /admin/numbers` with the `msisdn`.
+
+The pairing **QR contains only your backend URL and the receiver's credentials — not the number.**
+When the app scans it, the phone authenticates to your backend; the number you already provided is
+in the pool. From then on, `startVerification()` picks one of your numbers and tells the user to
+text or call *that* number. A receiver can hold several numbers (multiple SIMs) — register each.
+
+## What you can configure
+
+**Embedded engine** (`ctv.Options`):
+
+| Option | Default | What it does |
+|---|---|---|
+| `SQLitePath` | `calltoverify.db` | embedded SQLite file (zero infrastructure) |
+| `PostgresDSN` | — | use Postgres instead of SQLite |
+| `RedisURL` | — | share rate-limit + replay-nonce across instances |
+| `CodeLen` | `6` | verification code length |
+| `TTL` | `90s` | how long a code stays valid |
+| `OnVerified` | — | callback fired when a number is verified |
+
+**Standalone Coordinator** — environment variables: `CTV_DATABASE_URL`, `CTV_REDIS_URL`,
+`CTV_ADMIN_TOKEN`, `CTV_DEFAULT_CODE_LEN`, `CTV_DEFAULT_TTL_SECONDS`, `CTV_LISTEN_ADDR`.
+
+Safety controls are on by default: inbound is rate-limited per sender, a sender is auto-blocked
+after repeated failures or flooding, voice channels are limited to one call per SIM at a time, and
+each number caps how many pending sessions it will hold.
+
+## Run it on a Raspberry Pi
+
+A Pi + a USB GSM modem is the most reliable receiver, and the only one that can do DTMF. The
+outline (full steps in [`receiver-pi/README.md`](receiver-pi)):
+
+1. **Hardware:** a Raspberry Pi and a USB GSM modem (or HAT) with a SIM.
+2. **Install:** `cd receiver-pi && pip install -e .` (gives you the `ctv-pi` command).
+3. **Pair:** `ctv-pi pair '<the pairing JSON from your backend>' --msisdn "+8801700000001"`, then
+   `ctv-pi register`.
+4. **SMS** (via gammu): `sudo apt install gammu-smsd` and point its `RunOnReceive` at `ctv-pi on-sms`.
+5. **Missed call / DTMF** (via Asterisk): add the provided dialplan + AGI script.
+6. **Keep it online:** install the `ctv-pi run` systemd service (heartbeats + retry buffer).
 
 ## Project status
 

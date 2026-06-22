@@ -10,7 +10,7 @@ device "online" with periodic heartbeats and drains a durable retry buffer.
 
 - **SMS channel.** Reads incoming SMS (sender + body) and reports them to the Coordinator.
 - **Missed-call channel.** Detects a ringing call, reads the caller number, auto-rejects the
-  call (so the user is only charged for a free missed call), and reports it.
+  call before it connects (so the user is not charged), and reports it.
 - **Pairing.** Scans a pairing QR from the dashboard, stores the credentials in encrypted
   preferences, and registers the device.
 - **Liveness.** A foreground service registers on start, then heartbeats every 60s and flushes

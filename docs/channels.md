@@ -13,7 +13,8 @@ The user sends an SMS containing the on-screen code. The receiver reads the send
   distributed as a sideloaded APK or runs as the default SMS handler.
 
 ### Missed call
-The user gives a free missed call. The receiver reads the caller ID and auto-rejects.
+The user gives a missed call; the receiver reads the caller ID and auto-rejects it before it
+connects, so the user is not charged.
 - **Zero cost to the user.**
 - The call carries no code, so the caller ID itself is the binder. This means **missed call
   requires `claim` mode** (see below): the user's number is known up front and must match.
