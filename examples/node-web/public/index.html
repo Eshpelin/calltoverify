@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CallToVerify · Node example</title>
+<style>
+  body{margin:0;background:#fafafe;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#17172b;display:flex;min-height:100vh;align-items:center;justify-content:center}
+  .card{background:#fff;border:1px solid rgba(23,23,43,.1);border-radius:18px;padding:26px;max-width:360px;width:100%}
+  h1{font-size:20px;font-weight:700;margin:0 0 4px}
+  h2{font-size:20px;font-weight:700;margin:0 0 4px;text-align:center}
+  .muted{color:#6b6b82;font-size:14px;margin:0 0 16px}
+  .btn{display:flex;align-items:center;justify-content:center;background:#4f46e5;color:#fff;border:none;border-radius:11px;padding:13px;font:inherit;font-weight:600;width:100%;cursor:pointer;text-decoration:none;margin-top:8px}
+  .btn:hover{background:#4338ca}
+  .code{display:flex;gap:8px;justify-content:center;margin:6px 0 14px}
+  .code span{width:42px;height:52px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#4338ca;background:#f4f4fb;border-radius:10px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Verify your number</h1>
+    <p class="muted">We won't text you a code. You send us one instead — it's free and instant.</p>
+    <div id="view"><button class="btn" onclick="start()">Start SMS verification</button></div>
+  </div>
+<script>
+async function start() {
+  const v = await fetch('/api/start?channel=sms', { method: 'POST' }).then(r => r.json());
+  const view = document.getElementById('view');
+  if (!v.sessionId) { view.innerHTML = '<p class="muted">' + (v.error || 'No receiver available') + '</p>'; return; }
+  const i = v.instructions;
+  view.innerHTML =
+    '<p class="muted">' + i.action + '</p>' +
+    '<div class="code">' + (i.code || '').split('').map(d => '<span>' + d + '</span>').join('') + '</div>' +
+    '<a class="btn" href="' + i.deepLink + '">Open messages</a>' +
+    '<p class="muted" id="s" style="margin-top:14px">Waiting for your text…</p>';
+  const timer = setInterval(async () => {
+    const st = await fetch('/api/status?id=' + encodeURIComponent(v.sessionId)).then(r => r.json());
+    if (st.status === 'verified') {
+      clearInterval(timer);
+      view.innerHTML = '<h2>Verified ✓</h2><p class="muted" style="text-align:center">' + (st.verifiedMsisdn || '') + '</p>';
+    } else if (st.status === 'expired') {
+      clearInterval(timer);
+      document.getElementById('s').textContent = 'Expired. Refresh to try again.';
+    }
+  }, 2000);
+}
+</script>
+</body>
+</html>

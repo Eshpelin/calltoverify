@@ -37,7 +37,7 @@
   .btn{background:var(--brand);color:#fff;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:600;width:100%;margin-top:14px}
   .btn:hover{background:var(--brand-strong)}
   .btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--border)}
-  canvas{display:block;margin:6px auto 10px;border-radius:10px}
+  .qr img{display:block;margin:6px auto 10px;border-radius:10px;width:180px;height:auto;image-rendering:pixelated}
   .code{display:flex;gap:7px;justify-content:center;margin:6px 0 12px}
   .digit{width:38px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--brand-strong);background:var(--surface);border-radius:9px}
   .wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
@@ -81,7 +81,7 @@
         <button class="btn" onclick="pair()">Generate pairing QR</button>
       </div>
       <div id="pairResult" style="display:none">
-        <canvas id="qr" width="180" height="180"></canvas>
+        <div id="qr" class="qr"></div>
         <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the device to come online…</div>
       </div>
     </div>
@@ -124,7 +124,7 @@ v, _ := eng.StartVerification(ctx,
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 const j = (r) => r.json();
 async function pair(){
@@ -132,7 +132,8 @@ async function pair(){
   const body = { Name: pName.value, MSISDN: pMsisdn.value, Channels: channels };
   const res = await fetch('/api/pair',{method:'POST',body:JSON.stringify(body)}).then(j);
   pairForm.style.display='none'; pairResult.style.display='block';
-  QRCode.toCanvas(document.getElementById('qr'), res.payload, {width:180,margin:1,color:{dark:'#17172b',light:'#ffffff'}});
+  const qr = qrcode(0, 'M'); qr.addData(res.payload); qr.make();
+  document.getElementById('qr').innerHTML = qr.createImgTag(4, 8);
   const watch = setInterval(async()=>{
     const devs = await fetch('/api/devices').then(j);
     if(devs.some(d=>d.ID===res.device_id && d.Status==='online')){ clearInterval(watch);
