@@ -198,13 +198,18 @@
     <!-- INTEGRATE -->
     <section class="view" id="view-integrate">
       <div class="h1">Integrate</div>
-      <p class="lead">Two ways in. If your backend is Go, embed the engine. Any other backend (Node, PHP,
-        Python, anything) runs the standalone Coordinator and calls its REST API. Either way your API
-        key stays server-side and the verified result comes back by callback or webhook.</p>
+      <p class="lead">Two paths — pick by your backend language. Full step-by-step guide with
+        explanations: <span class="mono">docs/getting-started.md</span>.</p>
+      <div class="card" style="border-left:3px solid var(--brand);margin-bottom:18px">
+        <p style="margin:0"><b>This console is the Go-embedded path.</b> It has no apps or API keys —
+          you add receivers under <a data-view="add" style="color:var(--brand);cursor:pointer">Add a device</a>
+          and call the engine in code (below). The REST steps further down are only if your backend
+          <i>isn't</i> Go; they run against a separate Coordinator you'd start yourself, not this console.</p>
+      </div>
 
-      <h2>Go — embed the engine</h2>
+      <h2>Path A — Go backend: embed the engine</h2>
       <div class="card">
-        <p>Mount the device handler and start verifications from your code. No separate service to run.</p>
+        <p>No API key, no separate service. Add a receiver in the console, then call the engine from your code.</p>
         <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
   OnVerified: <span class="k">func</span>(ev ctv.Event) {
     <span class="s">// mark the user verified in your DB</span>
@@ -217,11 +222,12 @@ v, _ := eng.StartVerification(ctx, ctv.Params{Channel: <span class="s">"sms"</sp
 <span class="s">// show v.Instructions to the user; poll eng.Status(ctx, v.SessionID)</span></div>
       </div>
 
-      <h2>Any backend — REST API, step by step</h2>
+      <h2>Path B — any other backend: REST API, step by step</h2>
       <div class="card">
-        <p>Run the standalone Coordinator, provision over its admin API to get a key, then call
-          <span class="mono">/v1</span> from your server (never the browser). Full end-to-end
-          walkthrough: <span class="mono">docs/getting-started.md</span>.</p>
+        <p>Run the Coordinator as a separate service, create an app to get an API key, add a receiver,
+          then call <span class="mono">/v1</span> from your server (never the browser). Each step below
+          says where it runs. Full version with term-by-term explanations:
+          <span class="mono">docs/getting-started.md</span>.</p>
         <div class="snippet"><span class="s"># 1. Run the Coordinator (needs Postgres). The admin token you pick here unlocks
 #    provisioning — keep it secret. Listens on :8080 and auto-migrates.</span>
 export CTV_ADMIN_TOKEN=$(openssl rand -hex 24)
