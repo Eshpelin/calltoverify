@@ -14,8 +14,9 @@ export * from "./controller.js";
 export type { Labels } from "./i18n.js";
 
 export interface MountOptions extends ControllerOptions {
-  /** Channels to offer. If more than one, a chooser is shown first. Defaults to a
-   *  single, backend-chosen channel (no chooser). */
+  /** Channels to offer, in priority order: the first is the primary (shown first)
+   *  and the rest are alternatives the user can switch to. With more than one a
+   *  chooser is shown; with none, the backend picks a single channel. */
   channels?: Channel[];
   pollIntervalMs?: number;
   onVerified?: (verifiedMsisdn?: string) => void;

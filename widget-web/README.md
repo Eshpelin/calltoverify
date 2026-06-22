@@ -16,7 +16,8 @@ server. You provide `start` (your backend calls the engine / SDK's start) and `s
 import { mount } from "@calltoverify/widget";
 
 mount("#verify", {
-  // Offer one or more channels. With more than one, a chooser is shown first.
+  // Channels in priority order: the first is the primary (shown first), the rest
+  // are alternatives. With more than one, a chooser is shown.
   channels: ["sms", "call"],
 
   start: async (channel) => {

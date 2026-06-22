@@ -12,7 +12,8 @@ export type { Channel } from "./types.js";
 export type { Labels } from "./i18n.js";
 
 export interface CallToVerifyProps {
-  /** Channels to offer. With more than one, a chooser is shown first. */
+  /** Channels in priority order: the first is the primary (shown first), the rest
+   *  are alternatives. With more than one, a chooser is shown first. */
   channels?: Channel[];
   start: (channel?: Channel) => Promise<StartResult>;
   status: (sessionId: string) => Promise<StatusResult>;

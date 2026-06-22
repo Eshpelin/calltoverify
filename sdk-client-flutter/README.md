@@ -20,6 +20,7 @@ import 'package:calltoverify/calltoverify.dart';
 // optionally: import 'package:url_launcher/url_launcher.dart';
 
 CallToVerify(
+  // Priority order: the first is the primary (shown first), the rest are alternatives.
   channels: const [Channel.sms, Channel.call],
   start: (channel) async {
     final res = await myApi.startVerification(channel?.wire); // your backend
