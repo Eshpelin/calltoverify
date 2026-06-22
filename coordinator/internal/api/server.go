@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/config"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/deviceapi"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
@@ -23,7 +22,7 @@ type Server struct {
 	device *deviceapi.Handler
 }
 
-func NewServer(logger *slog.Logger, cfg config.Config, st store.Store, svc *verify.Service, nonces *auth.NonceCache) *Server {
+func NewServer(logger *slog.Logger, cfg config.Config, st store.Store, svc *verify.Service, nonces deviceapi.NonceStore) *Server {
 	return &Server{
 		logger: logger,
 		cfg:    cfg,

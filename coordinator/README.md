@@ -60,7 +60,7 @@ The Coordinator applies its own schema migrations on startup (tracked in `schema
 |---|---|---|
 | `CTV_LISTEN_ADDR` | `:8080` | HTTP listen address |
 | `CTV_DATABASE_URL` | `postgres://calltoverify:calltoverify@localhost:5432/calltoverify?sslmode=disable` | Postgres DSN |
-| `CTV_REDIS_URL` | `redis://localhost:6379` | Redis URL (reserved; not yet required) |
+| `CTV_REDIS_URL` | `redis://localhost:6379` | Redis URL; when reachable, rate-limit + replay-nonce are shared across instances (else in-process) |
 | `CTV_ENV` | `development` | `development` or `production` |
 | `CTV_ADMIN_TOKEN` | _(empty)_ | Bearer token for `/admin/*`. Empty disables the admin API. |
 | `CTV_DEFAULT_CODE_LEN` | `6` | Default verification code length |

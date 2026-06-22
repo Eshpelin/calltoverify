@@ -27,14 +27,20 @@ const (
 	ctxBody
 )
 
+// NonceStore rejects replayed device nonces. Implemented by auth.NonceCache
+// (in-process) and auth.RedisNonceCache (shared across instances).
+type NonceStore interface {
+	Seen(nonce string, now time.Time) bool
+}
+
 type Handler struct {
 	store  store.Store
 	svc    *verify.Service
-	nonces *auth.NonceCache
+	nonces NonceStore
 	logger *slog.Logger
 }
 
-func New(st store.Store, svc *verify.Service, nonces *auth.NonceCache, logger *slog.Logger) *Handler {
+func New(st store.Store, svc *verify.Service, nonces NonceStore, logger *slog.Logger) *Handler {
 	return &Handler{store: st, svc: svc, nonces: nonces, logger: logger}
 }
 
