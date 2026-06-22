@@ -27,8 +27,9 @@ pip install -e .        # provides the `ctv-pi` command
 
 ## Pair and register
 
-The developer's backend produces a pairing payload (the QR contents):
-`{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}`.
+A Pi has no camera, so it doesn't scan the pairing QR. In the console, choose **Add a device →
+Raspberry Pi** and it gives you a ready-to-paste `ctv-pi pair` command (the same credentials the QR
+would encode): `{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}`.
 
 ```bash
 ctv-pi pair '{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}' \

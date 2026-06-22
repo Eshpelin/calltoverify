@@ -80,6 +80,11 @@
   .empty{color:var(--muted);font-size:13px;padding:18px 12px}
   .snippet{background:#15151f;color:#e7e7f2;border-radius:10px;padding:15px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;overflow:auto;white-space:pre}
   .snippet .k{color:#a78bfa}.snippet .s{color:#7dd3a0}
+  #pairCmd{white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:160px}
+  .pair-h{font-size:13px;font-weight:700;margin:0 0 8px}
+  .pair-block{margin-bottom:8px}
+  .pair-alt{margin-top:8px;font-size:13px}
+  .pair-alt summary{cursor:pointer;color:var(--brand);font-weight:600;list-style:revert}
   .stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
   .statcard{flex:1;min-width:150px;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
   .statcard .v{font-size:26px;font-weight:800;letter-spacing:-.02em}
@@ -130,7 +135,7 @@
     <!-- ADD DEVICE -->
     <section class="view" id="view-add">
       <div class="h1">Add a device</div>
-      <p class="lead">A receiver is a spare Android phone (or a Raspberry Pi) with a SIM. Fill in its number, pick the channels it should accept, and scan the QR with the CallToVerify app to connect it.</p>
+      <p class="lead">A receiver is a spare Android phone (or a Raspberry Pi) with a SIM. Fill in its number, pick the channels it should accept, and connect it — an Android phone scans a QR; a headless Raspberry Pi pastes a one-line command over SSH.</p>
       <div class="row2">
         <div class="card">
           <h3>Receiver details</h3>
@@ -146,17 +151,15 @@
               <label><input type="checkbox" value="call" /> Missed call</label>
               <label><input type="checkbox" value="dtmf" /> DTMF (Pi only)</label>
             </div>
-            <button class="btn" onclick="pair()">Generate pairing QR</button>
+            <button class="btn" onclick="pair()">Generate pairing</button>
           </div>
         </div>
         <div class="card">
-          <h3>Scan to connect</h3>
-          <p>Open the CallToVerify app on the receiver and scan this code.</p>
-          <div id="pairResult" style="display:none">
-            <div id="qr" class="qr"></div>
-            <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the device to come online…</div>
-          </div>
-          <div id="pairHint" class="muted" style="font-size:13px;padding:30px 4px;text-align:center">The QR appears here once you generate it.</div>
+          <h3>Connect the receiver</h3>
+          <p>An Android phone scans the QR. A Raspberry Pi has no camera, so you paste a one-line
+            command over SSH instead — both carry the same credentials.</p>
+          <div id="pairResult" style="display:none"></div>
+          <div id="pairHint" class="muted" style="font-size:13px;padding:30px 4px;text-align:center">Generate a pairing to connect this receiver.</div>
         </div>
       </div>
     </section>
@@ -240,13 +243,36 @@ window.addEventListener('hashchange', ()=>setView(location.hash.slice(1)));
 setView(location.hash.slice(1) || 'overview');
 
 /* ---- pairing ---- */
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function copyPairCmd(){
+  const t = $('pairCmd'); if(!t) return;
+  navigator.clipboard?.writeText(t.textContent).then(()=>{ const b=$('copyBtn'); if(b){ b.textContent='Copied'; setTimeout(()=>b.textContent='Copy command',1400); } });
+}
+// Render the pairing result. The QR and the CLI command carry the SAME payload —
+// an Android phone scans the QR; a headless Pi pastes the command. Lead with the
+// method that matches the chosen type and offer the other as a fallback.
+function renderPairing(payload, type, msisdn){
+  $('pairHint').style.display='none'; $('pairResult').style.display='block';
+  const qr = qrcode(0, 'M'); qr.addData(payload); qr.make();
+  const qrBlock = `<div class="pair-h">Scan with the Android app</div><div class="qr">${qr.createImgTag(4,8)}</div>`;
+  const cmd = `ctv-pi pair '${payload}' --msisdn '${msisdn}'`;
+  const cliBlock = `<div class="pair-h">Pair a Raspberry Pi (no camera)</div>
+    <p class="muted" style="font-size:12.5px;margin:0 0 7px">SSH into the Pi and run:</p>
+    <div class="snippet" id="pairCmd">${esc(cmd)}</div>
+    <button class="btn ghost" id="copyBtn" style="margin-top:9px" onclick="copyPairCmd()">Copy command</button>`;
+  const primary = type==='pi' ? cliBlock : qrBlock;
+  const secondary = type==='pi'
+    ? `<summary>Has a screen with the app? Scan a QR instead</summary><div style="padding-top:10px">${qrBlock}</div>`
+    : `<summary>Pairing a headless device (Raspberry Pi)?</summary><div style="padding-top:10px">${cliBlock}</div>`;
+  $('pairResult').innerHTML = `<div class="pair-block">${primary}</div>
+    <details class="pair-alt">${secondary}</details>
+    <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the receiver to come online…</div>`;
+}
 async function pair(){
   const channels = [...document.querySelectorAll('#pairForm .chk input:checked')].map(c=>c.value);
-  const body = { Name: $('pName').value, Type: $('pType').value, MSISDN: $('pMsisdn').value, Channels: channels };
-  const res = await fetch('/api/pair',{method:'POST',body:JSON.stringify(body)}).then(j);
-  $('pairHint').style.display='none'; $('pairResult').style.display='block';
-  const qr = qrcode(0, 'M'); qr.addData(res.payload); qr.make();
-  $('qr').innerHTML = qr.createImgTag(4, 8);
+  const type = $('pType').value, msisdn = $('pMsisdn').value;
+  const res = await fetch('/api/pair',{method:'POST',body:JSON.stringify({ Name: $('pName').value, Type: type, MSISDN: msisdn, Channels: channels })}).then(j);
+  renderPairing(res.payload, type, msisdn);
   const watch = setInterval(async()=>{
     const devs = await fetch('/api/devices').then(j);
     if(devs.some(d=>d.ID===res.device_id && d.Status==='online')){ clearInterval(watch);

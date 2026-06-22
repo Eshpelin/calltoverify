@@ -277,11 +277,22 @@ outline (full steps in [`receiver-pi/README.md`](receiver-pi)):
 
 1. **Hardware:** a Raspberry Pi and a USB GSM modem (or HAT) with a SIM.
 2. **Install:** `cd receiver-pi && pip install -e .` (gives you the `ctv-pi` command).
-3. **Pair:** `ctv-pi pair '<the pairing JSON from your backend>' --msisdn "+8801700000001"`, then
-   `ctv-pi register`.
+3. **Pair:** in the console, **Add a device → Raspberry Pi**. A Pi has no camera, so instead of a
+   QR the console gives you a ready-to-paste command. SSH into the Pi and run it, then `ctv-pi register`:
+
+   ```sh
+   ctv-pi pair '{"endpoint":"https://verify.yourapp.com/ctv","device_id":"…","device_secret":"…"}' --msisdn "+8801700000001"
+   ctv-pi register
+   ```
 4. **SMS** (via gammu): `sudo apt install gammu-smsd` and point its `RunOnReceive` at `ctv-pi on-sms`.
 5. **Missed call / DTMF** (via Asterisk): add the provided dialplan + AGI script.
 6. **Keep it online:** install the `ctv-pi run` systemd service (heartbeats + retry buffer).
+
+The console gives you that exact command (and a copy button) when you add a Raspberry Pi:
+
+<p>
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console-add-pi.png" width="820" alt="Console Add-a-device with Raspberry Pi selected: a ready-to-paste ctv-pi pair command over SSH instead of a QR, with the QR available as a fallback." />
+</p>
 
 ## Project status
 
