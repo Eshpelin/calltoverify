@@ -112,18 +112,25 @@ API. Full guide: [`docs/getting-started.md`](docs/getting-started.md).
 
 ## Project status
 
-**Alpha. Under active construction.** Roadmap:
+**Alpha, but the whole loop works end to end** for all three channels (SMS, missed call, DTMF).
+A cross-language end-to-end test ([`scripts/e2e.sh`](scripts/e2e.sh)) drives the Go engine with
+the Python receiver client and verifies a number over HTTP.
 
-1. **Core + SMS** — Coordinator session lifecycle, Android SMS receiver, Node SDK, web widget.
-   _Coordinator done: session lifecycle, inbound matching for all three channels, provisioning,
-   bearer + HMAC auth, signed webhooks ([end-to-end guide](docs/getting-started.md))._
-2. **Missed call** — caller-ID capture, claim-mode flow, queueing, device dashboard.
-3. **Pi + DTMF** — Raspberry Pi receiver with Asterisk, voice queue, pool failover.
-4. **Harden + ecosystem** — attestation, abuse intelligence, PHP/Flutter SDKs, hosted SaaS.
+| Component | What | Verified |
+|---|---|---|
+| [`coordinator`](coordinator) + [`engine`](coordinator/engine) | Control plane: verification loop, auth, webhooks, embeddable engine (SQLite/Postgres), QR pairing | Unit + Postgres integration + E2E |
+| [`sdk-server-node`](sdk-server-node) | Node/TS backend SDK | Unit (CI) |
+| [`sdk-server-python`](sdk-server-python) | Python backend SDK | Unit (CI) |
+| [`sdk-server-php`](sdk-server-php) | PHP backend SDK (Laravel-friendly) | PHPUnit (CI) |
+| [`widget-web`](widget-web) | Vanilla JS verification widget | Unit (CI) |
+| [`sdk-client-react`](sdk-client-react) | React component | SSR tests (CI) |
+| [`sdk-client-flutter`](sdk-client-flutter) | Flutter client | `flutter test` (CI) |
+| [`receiver-pi`](receiver-pi) | Raspberry Pi receiver (SMS/missed-call/DTMF) | Client/signing unit-tested (CI) + E2E |
+| [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) | Reviewed; not compiled here (no Android SDK) |
 
-The Coordinator backend already implements the full verification loop for SMS, missed call, and
-DTMF. The receivers and SDKs that drive it are next. See [`DESIGN.md`](DESIGN.md) for the full
-blueprint.
+Remaining roadmap: per-number voice queueing + an ops dashboard; hardening (Play Integrity
+attestation, abuse intelligence, Redis-backed rate-limit/nonce, hosted SaaS); and a guided
+onboarding wizard. See [`DESIGN.md`](DESIGN.md) for the full blueprint.
 
 ## Security
 
