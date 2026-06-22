@@ -40,6 +40,7 @@ type Store interface {
 	GetDeviceByID(ctx context.Context, id string) (Device, error)
 	SetHeartbeat(ctx context.Context, deviceID string) error
 	ListNumbersByDevice(ctx context.Context, deviceID string) ([]Number, error)
+	ListDevices(ctx context.Context) ([]Device, error)
 
 	CreateNumber(ctx context.Context, n Number) (Number, error)
 	GetNumberByMSISDN(ctx context.Context, msisdn string) (Number, error)
@@ -47,6 +48,7 @@ type Store interface {
 
 	CreateSession(ctx context.Context, s Session) (Session, error) // ErrConflict on code collision
 	GetSession(ctx context.Context, appID, id string) (Session, error)
+	ListRecentSessions(ctx context.Context, appID string, limit int) ([]Session, error)
 	FindPendingByCode(ctx context.Context, numberID, code, channel string) (Session, error)
 	FindPendingMissedCall(ctx context.Context, numberID, claimed string) (Session, error)
 	VerifySession(ctx context.Context, id, verifiedMSISDN string) (bool, error)

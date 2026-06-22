@@ -270,6 +270,42 @@ func (s *pgStore) CreateBlock(ctx context.Context, target, kind, reason string, 
 	return err
 }
 
+func (s *pgStore) ListDevices(ctx context.Context) ([]Device, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, app_id, name, device_secret, type, capabilities, status, last_heartbeat, created_at FROM devices ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Device
+	for rows.Next() {
+		var d Device
+		if err := rows.Scan(&d.ID, &d.AppID, &d.Name, &d.DeviceSecret, &d.Type, &d.Capabilities, &d.Status, &d.LastHeartbeat, &d.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (s *pgStore) ListRecentSessions(ctx context.Context, appID string, limit int) ([]Session, error) {
+	rows, err := s.pool.Query(ctx, sessionSelect+` WHERE app_id = $1 ORDER BY created_at DESC LIMIT $2`, appID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Session
+	for rows.Next() {
+		var sess Session
+		if err := rows.Scan(&sess.ID, &sess.AppID, &sess.Channel, &sess.BindingMode, &sess.Status,
+			&sess.NumberID, &sess.Code, &sess.ClaimedMSISDN, &sess.VerifiedMSISDN, &sess.Attempts, &sess.CreatedAt, &sess.ExpiresAt); err != nil {
+			return nil, err
+		}
+		out = append(out, sess)
+	}
+	return out, rows.Err()
+}
+
 func (s *pgStore) Reset(ctx context.Context) error {
 	_, err := s.pool.Exec(ctx,
 		`TRUNCATE apps, devices, numbers, sessions, inbound_events, blocks RESTART IDENTITY CASCADE`)

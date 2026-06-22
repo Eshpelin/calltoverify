@@ -344,6 +344,50 @@ func (s *sqliteStore) CreateBlock(ctx context.Context, target, kind, reason stri
 	return err
 }
 
+func (s *sqliteStore) ListDevices(ctx context.Context) ([]Device, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, app_id, name, device_secret, type, capabilities, status, last_heartbeat, created_at FROM devices ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Device
+	for rows.Next() {
+		var d Device
+		var caps, createdAt string
+		var hb sql.NullString
+		if err := rows.Scan(&d.ID, &d.AppID, &d.Name, &d.DeviceSecret, &d.Type, &caps, &d.Status, &hb, &createdAt); err != nil {
+			return nil, err
+		}
+		d.Capabilities = decStrs(caps)
+		d.CreatedAt = parseTime(createdAt)
+		if hb.Valid {
+			t := parseTime(hb.String)
+			d.LastHeartbeat = &t
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (s *sqliteStore) ListRecentSessions(ctx context.Context, appID string, limit int) ([]Session, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+sqliteSessionCols+` FROM sessions WHERE app_id=? ORDER BY created_at DESC LIMIT ?`, appID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Session
+	for rows.Next() {
+		sess, err := scanSessionRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sess)
+	}
+	return out, rows.Err()
+}
+
 // --- helpers ---
 
 type scanner interface {
