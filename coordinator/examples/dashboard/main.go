@@ -10,8 +10,11 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	ctv "github.com/Eshpelin/calltoverify/coordinator/engine"
 )
@@ -50,12 +53,13 @@ func main() {
 	mux.HandleFunc("POST /api/pair", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name     string
+			Type     string
 			MSISDN   string
 			Channels []string
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		p, err := eng.NewPairing(ctx, ctv.PairingParams{
-			Endpoint: "http://" + r.Host + "/ctv", Name: body.Name, MSISDN: body.MSISDN, Channels: body.Channels,
+			Endpoint: "http://" + r.Host + "/ctv", Name: body.Name, Type: body.Type, MSISDN: body.MSISDN, Channels: body.Channels,
 		})
 		if err != nil {
 			httpErr(w, http.StatusInternalServerError, err)
@@ -99,6 +103,23 @@ func main() {
 		writeJSON(w, d)
 	})
 
+	mux.HandleFunc("DELETE /api/devices", func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			httpErr(w, http.StatusBadRequest, fmt.Errorf("missing id"))
+			return
+		}
+		if err := eng.RemoveDevice(ctx, id); err != nil {
+			if errors.Is(err, ctv.ErrNotFound) {
+				httpErr(w, http.StatusNotFound, err)
+				return
+			}
+			httpErr(w, http.StatusInternalServerError, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	mux.HandleFunc("GET /api/sessions", func(w http.ResponseWriter, r *http.Request) {
 		s, err := eng.Sessions(ctx, 20)
 		if err != nil {
@@ -108,8 +129,12 @@ func main() {
 		writeJSON(w, s)
 	})
 
-	log.Println("CallToVerify console on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	addr := os.Getenv("CTV_EXAMPLE_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+	log.Printf("CallToVerify console on http://localhost%s", addr)
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

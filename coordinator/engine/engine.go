@@ -291,6 +291,18 @@ func (e *Engine) Devices(ctx context.Context) ([]DeviceInfo, error) {
 	return out, nil
 }
 
+// RemoveDevice unpairs a receiver, deleting it and its numbers. Past
+// verifications are retained. Returns ErrNotFound if the id is unknown.
+func (e *Engine) RemoveDevice(ctx context.Context, deviceID string) error {
+	if err := e.store.DeleteDevice(ctx, deviceID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // SessionInfo is a recent verification for the ops dashboard.
 type SessionInfo struct {
 	ID             string
