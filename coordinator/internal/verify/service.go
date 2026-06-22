@@ -119,20 +119,6 @@ func (s *Service) Start(ctx context.Context, app store.App, req StartRequest) (S
 		return StartResult{}, &ValidationError{Field: "claimed_msisdn", Message: "required for claim binding"}
 	}
 
-	num, err := s.store.PickNumber(ctx, channel)
-	if errors.Is(err, store.ErrNotFound) {
-		// For voice channels, distinguish "all lines busy" (queue) from "no capacity".
-		if channel == "call" || channel == "dtmf" {
-			if avail, _ := s.store.CountAvailableNumbers(ctx, channel); avail > 0 {
-				return StartResult{}, &BusyError{Position: avail}
-			}
-		}
-		return StartResult{}, ErrNoCapacity
-	}
-	if err != nil {
-		return StartResult{}, err
-	}
-
 	codeLen := app.Config.CodeLen
 	if codeLen == 0 {
 		codeLen = s.defaultCodeLen
@@ -141,54 +127,68 @@ func (s *Service) Start(ctx context.Context, app store.App, req StartRequest) (S
 	if app.Config.TTLSeconds > 0 {
 		ttl = time.Duration(app.Config.TTLSeconds) * time.Second
 	}
+	expiresAt := time.Now().Add(ttl)
 
-	base := store.Session{
-		AppID:       app.ID,
-		Channel:     channel,
-		BindingMode: binding,
-		NumberID:    &num.ID,
-		ExpiresAt:   time.Now().Add(ttl),
-	}
-	if claimed != "" {
-		base.ClaimedMSISDN = &claimed
-	}
+	// Pick a number and create the pending session together, retrying on conflict.
+	// A conflict is either a rare SMS code collision or a concurrent voice start that
+	// just claimed the same SIM (the DB enforces one pending voice session per
+	// number). Re-picking each attempt resolves both: SMS gets a fresh code; voice
+	// gets a different free SIM, or none -> busy. This closes the pick/create race.
+	var (
+		sess   store.Session
+		code   string
+		picked store.Number
+		ok     bool
+	)
+	for attempt := 0; attempt < 8; attempt++ {
+		num, perr := s.store.PickNumber(ctx, channel)
+		if errors.Is(perr, store.ErrNotFound) {
+			return StartResult{}, s.noNumberErr(ctx, channel)
+		}
+		if perr != nil {
+			return StartResult{}, perr
+		}
 
-	var sess store.Session
-	var code string
-	if channelNeedsCode(channel) {
-		// Retry on the rare code collision with another pending session on this number.
-		for attempt := 0; attempt < 6; attempt++ {
-			code, err = generateCode(codeLen)
-			if err != nil {
-				return StartResult{}, err
+		candidate := store.Session{
+			AppID:       app.ID,
+			Channel:     channel,
+			BindingMode: binding,
+			NumberID:    &num.ID,
+			ExpiresAt:   expiresAt,
+		}
+		if claimed != "" {
+			candidate.ClaimedMSISDN = &claimed
+		}
+		if channelNeedsCode(channel) {
+			code, perr = generateCode(codeLen)
+			if perr != nil {
+				return StartResult{}, perr
 			}
-			candidate := base
 			candidate.Code = &code
-			sess, err = s.store.CreateSession(ctx, candidate)
-			if err == nil {
-				break
-			}
-			if errors.Is(err, store.ErrConflict) {
-				continue
-			}
-			return StartResult{}, err
+		} else {
+			code = ""
 		}
-		if err != nil {
-			return StartResult{}, err
+
+		sess, perr = s.store.CreateSession(ctx, candidate)
+		if perr == nil {
+			picked, ok = num, true
+			break
 		}
-	} else {
-		sess, err = s.store.CreateSession(ctx, base)
-		if err != nil {
-			return StartResult{}, err
+		if errors.Is(perr, store.ErrConflict) {
+			continue // code collision, or the SIM was just taken: try again
 		}
+		return StartResult{}, perr
+	}
+	if !ok {
+		return StartResult{}, s.noNumberErr(ctx, channel)
 	}
 
-	action, deepLink := buildInstructions(channel, num.MSISDN, code)
+	action, deepLink := buildInstructions(channel, picked.MSISDN, code)
 	return StartResult{
 		SessionID: sess.ID,
 		Status:    sess.Status,
 		Instructions: Instructions{
-			Number:    num.MSISDN,
+			Number:    picked.MSISDN,
 			Code:      code,
 			Channel:   channel,
 			Action:    action,
@@ -196,6 +196,17 @@ func (s *Service) Start(ctx context.Context, app store.App, req StartRequest) (S
 			ExpiresAt: sess.ExpiresAt,
 		},
 	}, nil
+}
+
+// noNumberErr reports BusyError when voice lines exist but are all occupied, else
+// ErrNoCapacity.
+func (s *Service) noNumberErr(ctx context.Context, channel string) error {
+	if channel == "call" || channel == "dtmf" {
+		if avail, _ := s.store.CountAvailableNumbers(ctx, channel); avail > 0 {
+			return &BusyError{Position: avail}
+		}
+	}
+	return ErrNoCapacity
 }
 
 // --- inbound ---
