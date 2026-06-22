@@ -121,3 +121,16 @@ jobs:
           cache-dependency-path: sdk-client-react/package-lock.json
       - run: npm ci
       - run: npm test
+
+  receiver-pi:
+    name: Pi receiver (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: receiver-pi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -t .

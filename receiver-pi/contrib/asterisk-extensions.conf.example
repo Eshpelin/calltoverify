@@ -1,0 +1,15 @@
+; Example Asterisk dialplan for the CallToVerify missed-call and DTMF channels.
+; Assumes inbound calls from your GSM modem (e.g. chan_dongle) land in this context.
+
+[calltoverify-incoming]
+; --- Missed-call channel: capture the caller id, hang up immediately (free for
+;     the caller), and report it as an inbound 'call' with an empty body. ---
+exten => s,1,NoOp(CallToVerify missed call from ${CALLERID(num)})
+ same => n,System(ctv-pi on-call --sender "${CALLERID(num)}")
+ same => n,Hangup()
+
+; --- DTMF channel: answer and collect the code via the AGI script. ---
+; To use DTMF instead of missed-call, route to this extension instead of 's':
+exten => dtmf,1,NoOp(CallToVerify DTMF from ${CALLERID(num)})
+ same => n,AGI(/opt/calltoverify/agi/ctv_dtmf.py)
+ same => n,Hangup()

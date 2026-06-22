@@ -1,20 +1,72 @@
 # receiver-pi
 
-Receiver daemon for a Raspberry Pi (or any Linux box) with a GSM modem. Supports all three
-channels, including DTMF, which the Android receiver cannot do.
+CallToVerify receiver for a Raspberry Pi (or any Linux box) with a GSM modem. It supports all
+three channels, including DTMF, which the Android receiver cannot do. It reports to the
+developer's backend using the same signed device protocol as the Android app.
 
-> **Status: planned (Phase 3).** Placeholder directory.
+> **Status: alpha.** The client, signing, and retry buffer are unit-tested here. The gammu and
+> Asterisk integration is glue that needs real hardware to run, so it is shipped as reviewed
+> configuration + scripts (not executed in CI).
 
-## Scope
+## What it does
 
-- **SMS + code:** read inbound SMS via `gammu-smsd`.
-- **Missed call:** read caller ID, auto-reject.
-- **DTMF:** answer the call and capture keypad tones via Asterisk (`chan_dongle`), running an
-  IVR prompt.
-- Register, heartbeat, and report signed inbound events to the Coordinator, with offline
-  buffering and retry.
+| Channel | How |
+|---|---|
+| **SMS** | `gammu-smsd` receives the SMS and calls `ctv-pi on-sms` (reads `SMS_1_NUMBER` / `SMS_1_TEXT`). |
+| **Missed call** | Asterisk dialplan captures the caller id, hangs up, and runs `ctv-pi on-call`. |
+| **DTMF** | Asterisk answers and an AGI script (`agi/ctv_dtmf.py`) collects the digits. |
 
-## Planned stack
+A `ctv-pi run` daemon keeps the device online with heartbeats and drains a durable retry buffer.
 
-Python daemon, `gammu-smsd` for SMS, Asterisk + `chan_dongle` for voice/DTMF. Typical hardware:
-Raspberry Pi + a USB GSM modem (for example a Huawei dongle) or a SIM800/SIM900 module.
+## Install
+
+```bash
+cd receiver-pi
+pip install -e .        # provides the `ctv-pi` command
+```
+
+## Pair and register
+
+The developer's backend produces a pairing payload (the QR contents):
+`{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}`.
+
+```bash
+ctv-pi pair '{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}' \
+  --msisdn "+8801700000001"
+ctv-pi register     # announces the device; caches its number if not set
+```
+
+## SMS channel (gammu)
+
+```bash
+sudo apt install gammu gammu-smsd
+sudo cp contrib/gammu-smsd.conf.example /etc/gammu-smsd.conf   # edit device/connection
+sudo systemctl enable --now gammu-smsd
+```
+
+`RunOnReceive = ctv-pi on-sms` posts each inbound SMS to your backend.
+
+## Missed-call and DTMF channels (Asterisk)
+
+Install Asterisk with a GSM channel driver (for example `chan_dongle`), then add the dialplan in
+`contrib/asterisk-extensions.conf.example` and copy `agi/ctv_dtmf.py` to the path it references.
+
+## Run the heartbeat daemon
+
+```bash
+sudo cp contrib/ctv-pi.service /etc/systemd/system/
+sudo systemctl enable --now ctv-pi
+```
+
+## Configuration
+
+Read from `~/.config/calltoverify/config.json` (written by `ctv-pi pair`), overridable by env:
+`CTV_ENDPOINT`, `CTV_DEVICE_ID`, `CTV_DEVICE_SECRET`, `CTV_MSISDN`, `CTV_QUEUE`.
+
+## Develop
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+Tests cover the signed client (matching the Go Coordinator's HMAC scheme) and the retry buffer.
