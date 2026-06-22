@@ -1,27 +1,31 @@
 -- 0001_init.sql — CallToVerify Coordinator initial schema.
 -- Target: PostgreSQL 14+. Requires pgcrypto for gen_random_uuid().
+-- Applied by the Coordinator's migration runner on startup (tracked in schema_migrations).
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Tenants / API keys. A single self-hosted instance can serve multiple apps.
+-- The bearer API key is shown once at creation; only its SHA-256 hash is stored.
 CREATE TABLE apps (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name           TEXT NOT NULL,
-    api_key        TEXT NOT NULL UNIQUE,
-    api_secret     TEXT NOT NULL,                       -- store a hash, never the raw secret
+    api_key_hash   TEXT NOT NULL UNIQUE,               -- sha256(hex) of the bearer key
+    api_key_prefix TEXT NOT NULL,                      -- non-secret prefix, for display
     webhook_url    TEXT,
-    webhook_secret TEXT,
+    webhook_secret TEXT NOT NULL,                      -- HMAC key the Coordinator signs webhooks with
     -- config: { binding_mode, code_len, ttl_seconds, channels_enabled[] }
     config         JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Receiver devices: a spare Android phone or a Raspberry Pi + GSM modem.
+-- device_secret is a symmetric HMAC key (stored as-is; the Coordinator needs it
+-- to verify signed inbound events).
 CREATE TABLE devices (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    app_id         UUID REFERENCES apps(id) ON DELETE CASCADE,
+    app_id         UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     name           TEXT NOT NULL,
-    device_secret  TEXT NOT NULL,                       -- store a hash
+    device_secret  TEXT NOT NULL,
     type           TEXT NOT NULL CHECK (type IN ('android', 'pi')),
     capabilities   TEXT[] NOT NULL DEFAULT '{}',         -- subset of: sms, call, dtmf
     status         TEXT NOT NULL DEFAULT 'offline'
@@ -64,7 +68,7 @@ CREATE TABLE sessions (
 -- signals match exactly one live session.
 CREATE UNIQUE INDEX sessions_active_code_per_number
     ON sessions (number_id, code)
-    WHERE status = 'pending';
+    WHERE status = 'pending' AND code IS NOT NULL;
 
 CREATE INDEX sessions_app_status ON sessions (app_id, status);
 CREATE INDEX sessions_expires_at ON sessions (expires_at) WHERE status = 'pending';

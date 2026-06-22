@@ -94,15 +94,18 @@ automatically on first boot. Full guide: [`docs/getting-started.md`](docs/gettin
 
 ## Project status
 
-**Alpha. Under active construction.** The Coordinator HTTP surface is scaffolded and the
-endpoints return `501 Not Implemented` until Phase 1 lands. Roadmap:
+**Alpha. Under active construction.** Roadmap:
 
 1. **Core + SMS** — Coordinator session lifecycle, Android SMS receiver, Node SDK, web widget.
+   _Coordinator done: session lifecycle, inbound matching for all three channels, provisioning,
+   bearer + HMAC auth, signed webhooks ([end-to-end guide](docs/getting-started.md))._
 2. **Missed call** — caller-ID capture, claim-mode flow, queueing, device dashboard.
 3. **Pi + DTMF** — Raspberry Pi receiver with Asterisk, voice queue, pool failover.
 4. **Harden + ecosystem** — attestation, abuse intelligence, PHP/Flutter SDKs, hosted SaaS.
 
-See [`DESIGN.md`](DESIGN.md) for the full blueprint.
+The Coordinator backend already implements the full verification loop for SMS, missed call, and
+DTMF. The receivers and SDKs that drive it are next. See [`DESIGN.md`](DESIGN.md) for the full
+blueprint.
 
 ## Security
 
