@@ -39,9 +39,12 @@ def main():
     cfg = load()
 
     _agi("ANSWER")
-    # Collect up to 6 digits, finished by # or a 7s timeout. Replace 'beep' with
-    # your own recorded "enter the code on your screen" prompt.
-    result = _agi("GET DATA beep 7000 6")
+    # Play the prompt, then collect up to 6 digits, finished by # or a 7s timeout.
+    # cfg.dtmf_prompt defaults to "beep"; set it to a recorded voice prompt like
+    # "ctv-enter-pin" (CTV_DTMF_PROMPT or contrib/make-dtmf-prompt.sh) to guide the
+    # caller to enter the code shown on their screen.
+    prompt = cfg.dtmf_prompt or "beep"
+    result = _agi(f"GET DATA {prompt} 7000 6")
     digits = ""
     if result.startswith("200"):
         # "200 result=<digits> (timeout)" or "200 result=<digits>"

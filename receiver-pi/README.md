@@ -52,6 +52,21 @@ sudo systemctl enable --now gammu-smsd
 Install Asterisk with a GSM channel driver (for example `chan_dongle`), then add the dialplan in
 `contrib/asterisk-extensions.conf.example` and copy `agi/ctv_dtmf.py` to the path it references.
 
+### DTMF voice prompt (optional)
+
+On a DTMF call the AGI plays a prompt, then collects the digits. By default it just plays a `beep`.
+To voice-guide the caller instead ("please enter the code shown on your screen, then press the pound
+key"), generate the prompt and point the receiver at it:
+
+```bash
+sudo apt install espeak-ng sox
+./contrib/make-dtmf-prompt.sh                       # writes ctv-enter-pin.wav (8 kHz mono)
+sudo cp ctv-enter-pin.wav /usr/share/asterisk/sounds/en/
+export CTV_DTMF_PROMPT=ctv-enter-pin                # or set "dtmf_prompt" in config.json
+```
+
+Any Asterisk sound name works as `CTV_DTMF_PROMPT`; record your own prompt if you prefer.
+
 ## Run the heartbeat daemon
 
 ```bash
