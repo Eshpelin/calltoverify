@@ -45,39 +45,34 @@ verification session. You receive on a cheap spare Android phone or a Raspberry 
 
 ### End-user experience
 
-What the person verifying sees. The embeddable [`widget-web`](widget-web) renders a channel
-chooser, a per-channel instruction with a tap-to-send deep link and a live countdown, and a
-success state. No code to wait for. (Real screenshots of the built widget.)
+What the person verifying sees: a channel chooser, a per-channel instruction with a tap-to-send
+deep link and a live countdown, and a verified state. No code to wait for.
 
 <p>
-  <img src="docs/screenshots/enduser-chooser.png" width="300" alt="Channel chooser: text us a code, or give a missed call" />
-  <img src="docs/screenshots/enduser-sms.png" width="300" alt="SMS instruction with the code shown as digit chips and an Open messages button" />
-  <img src="docs/screenshots/enduser-success.png" width="300" alt="Verified success state showing the verified number" />
-</p>
-
-### Android receiver app
-
-The spare phone that holds the SIM. It scans a pairing QR, then shows a live "Connected" status
-with the endpoint, provisioned numbers, and a log of recent inbound SMS and calls.
-
-> **Note:** these two images are a representative **design mockup** of the Compose UI (built from
-> the app's sources and brand palette), not a device capture. No Android emulator was available in
-> the build environment.
-
-<p>
-  <img src="docs/screenshots/android-pairing.png" width="260" alt="Mockup of the Android Scan to pair screen" />
-  <img src="docs/screenshots/android-connected.png" width="260" alt="Mockup of the Android Connected status screen" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-chooser.png" width="300" alt="Channel chooser: text us a code, or give a missed call" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-sms.png" width="300" alt="SMS instruction with the code as digit chips and an Open messages button" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/enduser-success.png" width="300" alt="Verified success state showing the verified number" />
 </p>
 
 ### Self-hosted console
 
-The [`coordinator/examples/dashboard`](coordinator/examples/dashboard) example: a guided onboarding
-wizard (pair a phone, run a test, copy the integration snippet) plus a live ops dashboard of
+The implementer's view ([`coordinator/examples/dashboard`](coordinator/examples/dashboard)): a
+guided onboarding wizard — pair a phone, run a test verification — plus a live dashboard of
 receivers and recent verifications. Embeds the engine, so there is no separate service and no
-database to run. (Real screenshot, populated with live receivers and verifications.)
+database to run.
 
 <p>
-  <img src="docs/screenshots/console.png" width="820" alt="Self-hosted console: onboarding wizard, receivers table, and recent verifications" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console.png" width="820" alt="Self-hosted console: onboarding wizard, receivers table, and recent verifications" />
+</p>
+
+### Android receiver app
+
+The spare phone that holds the SIM. It scans a pairing QR, then shows a live connected status with
+the endpoint, provisioned numbers, and recent inbound activity.
+
+<p>
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/android-pairing.png" width="260" alt="Android scan-to-pair screen" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/android-connected.png" width="260" alt="Android connected status screen" />
 </p>
 
 ## How verification works
