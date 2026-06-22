@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   attempts INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS sessions_active_code_per_number
   ON sessions(number_id, code) WHERE status='pending' AND code IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_voice_per_number
+  ON sessions(number_id) WHERE status='pending' AND channel IN ('call','dtmf');
 CREATE INDEX IF NOT EXISTS sessions_app_status ON sessions(app_id, status);
 CREATE TABLE IF NOT EXISTS inbound_events (
   id TEXT PRIMARY KEY, number_id TEXT, type TEXT NOT NULL, sender TEXT NOT NULL,
