@@ -15,7 +15,9 @@ import (
 	"github.com/Eshpelin/calltoverify/coordinator/internal/api"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/config"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/deviceapi"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/ratelimit"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/redisutil"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/verify"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/webhook"
@@ -45,9 +47,22 @@ func main() {
 	logger.Info("migrations applied")
 
 	wh := webhook.New(logger)
-	limiter := ratelimit.New(60, 10) // 60 inbound/min per sender, burst 10
+
+	// Rate-limit + replay-nonce: in-process by default; Redis-backed (shared across
+	// instances) when CTV_REDIS_URL points at a reachable Redis.
+	var limiter verify.Limiter = ratelimit.New(60, 10) // 60 inbound/min per sender, burst 10
+	var nonces deviceapi.NonceStore = auth.NewNonceCache(10 * time.Minute)
+	if cfg.RedisURL != "" {
+		if rc, err := redisutil.Connect(rootCtx, cfg.RedisURL); err == nil {
+			limiter = ratelimit.NewRedis(rc, 60)
+			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute)
+			logger.Info("redis connected for rate-limit + nonce")
+		} else {
+			logger.Warn("redis unavailable; using in-process rate-limit + nonce", "err", err)
+		}
+	}
+
 	svc := verify.NewService(st, wh, limiter, cfg.DefaultCodeLen, cfg.DefaultTTL)
-	nonces := auth.NewNonceCache(10 * time.Minute)
 	server := api.NewServer(logger, cfg, st, svc, nonces)
 
 	if cfg.AdminToken == "" {

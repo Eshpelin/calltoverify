@@ -23,6 +23,7 @@ import (
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/deviceapi"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/ratelimit"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/redisutil"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/verify"
 )
@@ -58,6 +59,7 @@ func (e *Error) Error() string { return e.Code + ": " + e.Message }
 type Options struct {
 	SQLitePath  string         // SQLite file path (default "calltoverify.db")
 	PostgresDSN string         // if set, use Postgres instead of SQLite
+	RedisURL    string         // optional; share rate-limit + nonce across instances
 	OnVerified  func(ev Event) // called when a verification succeeds
 	CodeLen     int            // verification code length (default 6)
 	TTL         time.Duration  // session lifetime (default 90s)
@@ -181,8 +183,20 @@ func New(ctx context.Context, opts Options) (*Engine, error) {
 		return nil, err
 	}
 
-	svc := verify.NewService(st, callbackNotifier{cb: opts.OnVerified}, ratelimit.New(60, 10), codeLen, ttl)
-	device := deviceapi.New(st, svc, auth.NewNonceCache(10*time.Minute), logger)
+	var limiter verify.Limiter = ratelimit.New(60, 10)
+	var nonces deviceapi.NonceStore = auth.NewNonceCache(10 * time.Minute)
+	if opts.RedisURL != "" {
+		if rc, rerr := redisutil.Connect(ctx, opts.RedisURL); rerr == nil {
+			limiter = ratelimit.NewRedis(rc, 60)
+			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute)
+			logger.Info("redis: sharing rate-limit + nonce across instances")
+		} else {
+			logger.Warn("redis unavailable; using in-process rate-limit + nonce", "err", rerr)
+		}
+	}
+
+	svc := verify.NewService(st, callbackNotifier{cb: opts.OnVerified}, limiter, codeLen, ttl)
+	device := deviceapi.New(st, svc, nonces, logger)
 	return &Engine{store: st, svc: svc, device: device, app: app, logger: logger}, nil
 }
 
