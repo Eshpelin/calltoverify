@@ -198,87 +198,60 @@
     <!-- INTEGRATE -->
     <section class="view" id="view-integrate">
       <div class="h1">Integrate</div>
-      <p class="lead">Two paths — pick by your backend language. Full step-by-step guide with
-        explanations: <span class="mono">docs/getting-started.md</span>.</p>
-      <div class="card" style="border-left:3px solid var(--brand);margin-bottom:18px">
-        <p style="margin:0"><b>This console is the Go-embedded path.</b> It has no apps or API keys —
-          you add receivers under <a data-view="add" style="color:var(--brand);cursor:pointer">Add a device</a>
-          and call the engine in code (below). The REST steps further down are only if your backend
-          <i>isn't</i> Go; they run against a separate Coordinator you'd start yourself, not this console.</p>
-      </div>
+      <p class="lead">This console <b>embeds the engine</b>: your Go backend becomes the endpoint receivers
+        talk to — no separate service, no API keys. Here's how to do the same in your app, including how
+        to get your verification data out. (Not on Go? See the bottom of this page.)</p>
 
-      <h2>Path A — Go backend: embed the engine</h2>
+      <h2>Embed the engine — this is exactly what this console runs</h2>
       <div class="card">
-        <p>No API key, no separate service. Add a receiver in the console, then call the engine from your code.</p>
-        <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
+        <div class="snippet"><span class="s">// 1. Create the engine. OnVerified is how you're told a user passed — your
+//    server is the endpoint, so there's no separate service and no API keys.</span>
+eng, err := ctv.New(ctx, ctv.Options{
+  SQLitePath: <span class="s">"calltoverify.db"</span>,        <span class="s">// or PostgresDSN: "postgres://…" in production</span>
   OnVerified: <span class="k">func</span>(ev ctv.Event) {
-    <span class="s">// mark the user verified in your DB</span>
+    <span class="s">// ev.VerifiedMSISDN was verified via ev.Channel — mark them verified in your DB</span>
   },
 })
-<span class="s">// the receiver app posts here; pair it with a QR from "Add a device"</span>
+<span class="k">defer</span> eng.Close()
+
+<span class="s">// 2. Mount the device handler — the URL your paired phones / Pis post to.</span>
 mux.Handle(<span class="s">"/ctv/"</span>, eng.DeviceHandler(<span class="s">"/ctv"</span>))
 
+<span class="s">// 3. Add a receiver under "Add a device" in this console (or eng.NewPairing in
+//    code), then pair the phone / Pi with the QR or command it gives you.</span>
+
+<span class="s">// 4. Start a verification when a user needs to verify; show v.Instructions to them.</span>
 v, _ := eng.StartVerification(ctx, ctv.Params{Channel: <span class="s">"sms"</span>})
-<span class="s">// show v.Instructions to the user; poll eng.Status(ctx, v.SessionID)</span></div>
+<span class="s">//    v.Instructions = { Number, Code, Action, DeepLink, ExpiresAt }</span>
+
+<span class="s">// 5. Get the data. Push: the OnVerified callback above. Pull, any time:</span>
+st, _ := eng.Status(ctx, v.SessionID)         <span class="s">// st.Status == "verified", st.VerifiedMSISDN</span>
+<span class="s">// And to build views like this console's:</span>
+sessions, _ := eng.Sessions(ctx, 20)          <span class="s">// recent verifications</span>
+devices, _ := eng.Devices(ctx)                <span class="s">// paired receivers + online status</span></div>
+        <p style="margin:14px 0 0">That's the whole integration — no API keys, no webhooks. This page's
+          tables and the test screen are built on those same <span class="mono">Sessions</span> /
+          <span class="mono">Devices</span> / <span class="mono">Status</span> calls.</p>
       </div>
 
-      <h2>Path B — any other backend: REST API, step by step</h2>
+      <h2>Front-end</h2>
+      <div class="card"><p style="margin:0">Show the engine's <span class="mono">Instructions</span> to the user
+        with the drop-in <span class="mono">widget-web</span>, or the <span class="mono">sdk-client-react</span> /
+        <span class="mono">sdk-client-flutter</span> components (text us, missed call, DTMF). Their
+        <span class="mono">start</span> / <span class="mono">status</span> callbacks call <i>your</i> backend, which
+        calls the engine above — nothing secret reaches the browser.</p></div>
+
+      <h2>Not using Go?</h2>
       <div class="card">
-        <p>Run the Coordinator as a separate service, create an app to get an API key, add a receiver,
-          then call <span class="mono">/v1</span> from your server (never the browser). Each step below
-          says where it runs. Full version with term-by-term explanations:
-          <span class="mono">docs/getting-started.md</span>.</p>
-        <div class="snippet"><span class="s"># 1. Run the Coordinator (needs Postgres). The admin token you pick here unlocks
-#    provisioning — keep it secret. Listens on :8080 and auto-migrates.</span>
-export CTV_ADMIN_TOKEN=$(openssl rand -hex 24)
-export CTV_DATABASE_URL=postgres://calltoverify:calltoverify@localhost:5432/calltoverify?sslmode=disable
-go run ./coordinator/cmd/coordinator
-
-<span class="s"># 2. Create an app → THIS is where your API key comes from (shown once).</span>
-curl -X POST http://localhost:8080/admin/apps \
-  -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
-  -d '{"name":"my-app","webhook_url":"https://my-app.com/webhooks/ctv"}'
-<span class="s"># → { "app_id":"…", "api_key":"ctv_live_…", "webhook_secret":"whsec_…" }</span>
-
-<span class="s"># 3. Pair a receiver: register a device, then its SIM number.</span>
-curl -X POST http://localhost:8080/admin/devices -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
-  -d '{"app_id":"$APP_ID","name":"Front desk phone","type":"android","capabilities":["sms"]}'
-<span class="s"># → { "device_id":"…", "device_secret":"…" }   ← pair the phone/Pi with these</span>
-curl -X POST http://localhost:8080/admin/numbers -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
-  -d '{"device_id":"$DEVICE_ID","msisdn":"+8801700000001","channels":["sms"]}'
-<span class="s"># Pair the device with { endpoint: http://localhost:8080/v1, device_id, device_secret }.</span>
-
-<span class="s"># 4. From your backend, start a verification with the API key.</span>
-curl -X POST http://localhost:8080/v1/verifications -H <span class="s">"Authorization: Bearer $API_KEY"</span> \
-  -d '{"channel":"sms"}'
-<span class="s"># → { "session_id":"…", "instructions":{ "number","code":"4729","action","deep_link","expires_at" } }</span>
-
-<span class="s"># 5. Get the result — poll, or use the webhook below.</span>
-curl http://localhost:8080/v1/verifications/$SESSION_ID -H <span class="s">"Authorization: Bearer $API_KEY"</span>
-<span class="s"># → { "status":"verified", "verified_msisdn":"+8801712345678", … }</span></div>
+        <p style="margin:0 0 8px">Run the Coordinator as a standalone service and use its REST API instead.
+          The moving parts are the same, but you create an app to get an <span class="mono">api_key</span>,
+          then call <span class="mono">/v1</span> over HTTP and get results by polling or a signed webhook
+          (rather than the in-process <span class="mono">OnVerified</span> callback).</p>
+        <p style="margin:0"><b>Full numbered walkthrough, with where each step runs and every term explained:
+          <span class="mono">docs/getting-started.md</span></b> (Path B). The
+          <span class="mono">@calltoverify/sdk</span> (Node), <span class="mono">calltoverify</span> (Python),
+          and PHP/Laravel backend SDKs wrap those calls for you.</p>
       </div>
-
-      <h2>Webhooks — get told instead of polling</h2>
-      <div class="card">
-        <p>Set a <span class="mono">webhook_url</span> when you create the app. On success the Coordinator POSTs
-          to it; verify the signature with your <span class="mono">webhook_secret</span> and mark the user verified.</p>
-        <div class="snippet"><span class="s"># Coordinator → your webhook_url</span>
-POST /your/webhook
-X-CTV-Event: verification.verified
-X-CTV-Signature: <span class="s">hex(HMAC-SHA256(webhook_secret, raw_body))</span>
-
-{ <span class="s">"event"</span>: <span class="s">"verification.verified"</span>, <span class="s">"session_id"</span>: <span class="s">"…"</span>,
-  <span class="s">"verified_msisdn"</span>: <span class="s">"+8801712345678"</span>, <span class="s">"channel"</span>: <span class="s">"sms"</span>, <span class="s">"ts"</span>: <span class="s">"…"</span> }
-
-<span class="s"># Recompute the HMAC over the raw body and compare before trusting it.</span></div>
-      </div>
-
-      <h2>SDKs (these wrap the REST API for you)</h2>
-      <div class="card"><p style="margin:0">Backend: <span class="mono">@calltoverify/sdk</span> (Node), <span class="mono">calltoverify</span> (Python),
-        and a PHP/Laravel package — each does the start/status/webhook-verify calls above.
-        Front-end: a drop-in web widget plus React and Flutter components render the user-facing flow
-        (text us, missed call, DTMF). See <span class="mono">sdk-server-*</span>, <span class="mono">widget-web</span>,
-        <span class="mono">sdk-client-react</span>, and <span class="mono">sdk-client-flutter</span> in the repository.</p></div>
     </section>
 
   </div></main>
