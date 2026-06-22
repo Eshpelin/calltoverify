@@ -132,9 +132,10 @@ the Python receiver client and verifies a number over HTTP.
 | [`receiver-pi`](receiver-pi) | Raspberry Pi receiver (SMS/missed-call/DTMF) | Client/signing unit-tested (CI) + E2E |
 | [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) | Reviewed; not compiled here (no Android SDK) |
 
-Remaining roadmap: per-number voice queueing + an ops dashboard; hardening (Play Integrity
-attestation, abuse intelligence, Redis-backed rate-limit/nonce, hosted SaaS); and a guided
-onboarding wizard. See [`DESIGN.md`](DESIGN.md) for the full blueprint.
+Remaining roadmap: hardening (Play Integrity attestation, Redis-backed rate-limit/nonce for
+multi-instance deployments, hosted SaaS). Per-SIM voice queueing, an ops dashboard, the
+onboarding wizard, and sender auto-blocking are already implemented. See
+[`DESIGN.md`](DESIGN.md) for the full blueprint.
 
 ## Security
 
