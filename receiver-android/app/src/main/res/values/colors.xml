@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CallToVerify brand: indigo accent on a near-neutral surface. -->
+    <color name="ctv_indigo">#4F46E5</color>
+    <color name="ctv_indigo_dark">#4338CA</color>
+    <color name="ctv_on_indigo">#FFFFFF</color>
+
+    <color name="ctv_background_light">#FBFBFE</color>
+    <color name="ctv_surface_light">#FFFFFF</color>
+    <color name="ctv_on_surface_light">#1B1B1F</color>
+
+    <color name="ctv_background_dark">#121218</color>
+    <color name="ctv_surface_dark">#1B1B22</color>
+    <color name="ctv_on_surface_dark">#E4E1E9</color>
+
+    <color name="ctv_status_online">#16A34A</color>
+    <color name="ctv_status_offline">#D97706</color>
+</resources>

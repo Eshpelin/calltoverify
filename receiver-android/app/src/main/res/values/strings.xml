@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CallToVerify</string>
+
+    <!-- Foreground-service notification channel. -->
+    <string name="channel_service_name">Receiver status</string>
+    <string name="channel_service_desc">Keeps the receiver online and reports inbound SMS and calls.</string>
+
+    <!-- Foreground-service notification. -->
+    <string name="service_notification_title">CallToVerify receiver</string>
+    <string name="service_status_starting">Starting…</string>
+    <string name="service_status_online">Online · listening for SMS and calls</string>
+    <string name="service_status_offline">Offline · will retry</string>
+
+    <!-- Pairing screen. -->
+    <string name="pairing_subtitle">Scan the pairing QR from your CallToVerify dashboard to connect this phone.</string>
+    <string name="scan_to_pair">Scan to pair</string>
+    <string name="scan_hint">Point the camera at the pairing QR</string>
+    <string name="cancel">Cancel</string>
+    <string name="camera_needed">Camera access is required to scan the pairing QR.</string>
+    <string name="registering">Registering…</string>
+    <string name="paired_ok">Paired and registered.</string>
+
+    <!-- Connected screen. -->
+    <string name="status_online">Connected</string>
+    <string name="status_offline">Reconnecting</string>
+    <string name="label_endpoint">Endpoint</string>
+    <string name="label_device_id">Device ID</string>
+    <string name="label_pending">Buffered events</string>
+    <string name="section_numbers">Provisioned numbers</string>
+    <string name="no_numbers">No numbers provisioned yet.</string>
+    <string name="section_recent">Recent inbound</string>
+    <string name="no_events">No inbound events yet.</string>
+    <string name="unpair">Unpair this device</string>
+    <string name="type_sms">SMS</string>
+    <string name="type_call">CALL</string>
+</resources>

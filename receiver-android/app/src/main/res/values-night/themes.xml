@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Dark-mode window theme. Mirrors values/themes.xml with dark surfaces. -->
+    <style name="Theme.CallToVerify" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/ctv_indigo</item>
+        <item name="android:colorPrimaryDark">@color/ctv_indigo_dark</item>
+        <item name="android:colorAccent">@color/ctv_indigo</item>
+        <item name="android:windowBackground">@color/ctv_background_dark</item>
+        <item name="android:statusBarColor">@color/ctv_indigo_dark</item>
+        <item name="android:navigationBarColor">@color/ctv_background_dark</item>
+    </style>
+</resources>
