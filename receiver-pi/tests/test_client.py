@@ -50,6 +50,14 @@ class ClientTest(unittest.TestCase):
         expected = hmac.new(b"secret", b"1700000000\nnonce1\n" + body, hashlib.sha256).hexdigest()
         self.assertEqual(sign("secret", "1700000000", "nonce1", body), expected)
 
+    def test_device_signature_known_answer_vector(self):
+        # Cross-language known-answer vector. This pinned digest is mirrored in the
+        # Go (coordinator/internal/auth/auth_test.go), Node, and PHP suites. A
+        # round-trip test cannot catch cross-language drift; a fixed digest can.
+        # Do not change without updating every mirrored test.
+        got = sign("s3cr3t", "1700000000", "nonce1", b'{"a":1}')
+        self.assertEqual(got, "93cffdba929d8f1c542790a0b59ca1fd239a0a2a1f909f18f25ee401e484fc24")
+
     def test_non_2xx_raises(self):
         t = FakeTransport(status=401, body=b'{"error":"unauthorized","detail":"bad signature"}')
         with self.assertRaises(CtvError) as ctx:

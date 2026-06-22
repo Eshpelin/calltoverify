@@ -226,6 +226,24 @@ final class CallToVerifyTest extends TestCase
         $ctv->verifyWebhook($body . ' ', $sig);
     }
 
+    public function testVerifyWebhookKnownAnswerVector(): void
+    {
+        // Cross-language known-answer vector for webhook signing (body-only HMAC).
+        // This pinned digest is mirrored in the Go, Python, and Node suites. The
+        // body is a fixed compact JSON byte string -- the signature is over these
+        // exact bytes, asserted as a literal (json_encode could escape differently).
+        // Do not change without updating every mirrored test.
+        $secret = 'whsec_test';
+        $body = '{"event":"verification.verified","session_id":"sess1",'
+            . '"verified_msisdn":"+8801712345678","channel":"sms","ts":"2026-01-01T00:00:00Z"}';
+        $expected = 'e665a75f0e93afe2a7a77b832e826d2ec3654f3d519aec12f54b5ae558086694';
+        self::assertSame($expected, hash_hmac('sha256', $body, $secret));
+
+        $ctv = $this->client(new FakeHttpClient(), $secret);
+        $ev = $ctv->verifyWebhook($body, $expected);
+        self::assertSame('sess1', $ev->sessionId);
+    }
+
     public function testVerifyWebhookRequiresSecret(): void
     {
         $ctv = $this->client(new FakeHttpClient());

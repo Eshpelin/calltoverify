@@ -117,6 +117,22 @@ test("verifyWebhook accepts a valid signature and rejects a bad one", () => {
   assert.throws(() => ctv.verifyWebhook(body, tampered), CallToVerifyError);
 });
 
+test("verifyWebhook matches the cross-language known-answer vector", () => {
+  // Pinned digest mirrored in the Go, Python, and PHP suites. The body is a fixed
+  // compact JSON byte string -- the signature is over these exact bytes, asserted
+  // as a literal (JSON.stringify of an object could differ). Do not change without
+  // updating every mirrored test.
+  const secret = "whsec_test";
+  const body =
+    '{"event":"verification.verified","session_id":"sess1","verified_msisdn":"+8801712345678","channel":"sms","ts":"2026-01-01T00:00:00Z"}';
+  const expected = "e665a75f0e93afe2a7a77b832e826d2ec3654f3d519aec12f54b5ae558086694";
+  assert.equal(createHmac("sha256", secret).update(body).digest("hex"), expected);
+
+  const ctv = new CallToVerify({ baseUrl: "http://unused", apiKey: "k", webhookSecret: secret });
+  const ev = ctv.verifyWebhook(body, expected);
+  assert.equal(ev.sessionId, "sess1");
+});
+
 test("constructor validates required options", () => {
   assert.throws(() => new CallToVerify({ apiKey: "k" }));
   assert.throws(() => new CallToVerify({ baseUrl: "http://x" }));
