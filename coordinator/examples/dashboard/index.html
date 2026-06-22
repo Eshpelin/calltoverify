@@ -143,13 +143,13 @@
           <div id="pairForm">
             <label>Phone label</label><input id="pName" value="Front desk phone" />
             <label>Device type</label>
-            <select id="pType"><option value="android">Android phone</option><option value="pi">Raspberry Pi</option></select>
+            <select id="pType" onchange="applyTypeConstraints()"><option value="android">Android phone</option><option value="pi">Raspberry Pi</option></select>
             <label>SIM number (MSISDN)</label><input id="pMsisdn" value="+8801700000001" />
             <label>Channels this receiver accepts</label>
             <div class="chk">
               <label><input type="checkbox" value="sms" checked /> SMS + code</label>
               <label><input type="checkbox" value="call" /> Missed call</label>
-              <label><input type="checkbox" value="dtmf" /> DTMF (Pi only)</label>
+              <label id="dtmfLabel"><input type="checkbox" value="dtmf" id="dtmfChk" /> DTMF (Pi only)</label>
             </div>
             <button class="btn" onclick="pair()">Generate pairing</button>
           </div>
@@ -184,8 +184,9 @@
           <h3>Start a verification</h3>
           <p>Pick the channel the user will use. You need an online receiver that accepts it.</p>
           <label>Channel</label>
-          <select id="tChannel"><option value="sms">SMS + code</option><option value="call">Missed call</option><option value="dtmf">DTMF</option></select>
-          <button class="btn" onclick="startTest()">Start verification</button>
+          <select id="tChannel" onchange="updateTestHint()"><option value="sms">SMS + code</option><option value="call">Missed call</option><option value="dtmf">DTMF</option></select>
+          <div id="tHint" class="muted" style="font-size:12.5px;margin-top:9px"></div>
+          <button class="btn" id="tStart" onclick="startTest()">Start verification</button>
         </div>
         <div class="card">
           <h3>Result</h3>
@@ -197,10 +198,13 @@
     <!-- INTEGRATE -->
     <section class="view" id="view-integrate">
       <div class="h1">Integrate</div>
-      <p class="lead">Embed the engine in your Go backend. Your own server becomes the endpoint the receiver talks to — there is no separate service to run.</p>
+      <p class="lead">Two ways in. If your backend is Go, embed the engine. Any other backend (Node, PHP,
+        Python, anything) runs the standalone Coordinator and calls its REST API. Either way your API
+        key stays server-side and the verified result comes back by callback or webhook.</p>
+
+      <h2>Go — embed the engine</h2>
       <div class="card">
-        <h3>Go</h3>
-        <p>Mount the device handler and start verifications from your code.</p>
+        <p>Mount the device handler and start verifications from your code. No separate service to run.</p>
         <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
   OnVerified: <span class="k">func</span>(ev ctv.Event) {
     <span class="s">// mark the user verified in your DB</span>
@@ -212,8 +216,48 @@ mux.Handle(<span class="s">"/ctv/"</span>, eng.DeviceHandler(<span class="s">"/c
 v, _ := eng.StartVerification(ctx, ctv.Params{Channel: <span class="s">"sms"</span>})
 <span class="s">// show v.Instructions to the user; poll eng.Status(ctx, v.SessionID)</span></div>
       </div>
-      <h2>Other front ends</h2>
-      <div class="card"><p style="margin:0">A drop-in web widget and React / Flutter components render the user-facing flow (text us, missed call, DTMF) against your backend. See the SDKs in the repository.</p></div>
+
+      <h2>Any backend — REST API</h2>
+      <div class="card">
+        <p>Run the standalone Coordinator (<span class="mono">go run ./coordinator/cmd/coordinator</span>) and
+          call it from your server with your API key as a bearer token. Never call it from the browser.</p>
+        <div class="snippet"><span class="s"># 1. Start a verification</span>
+curl -X POST https://your-coordinator/v1/verifications \
+  -H <span class="s">"Authorization: Bearer $CTV_API_KEY"</span> \
+  -d '{"channel":"sms"}'
+<span class="s"># → { "session_id": "…", "instructions": {</span>
+<span class="s">#       "number":"+8801…", "code":"4729",</span>
+<span class="s">#       "action":"Text 4729 to +8801…", "deep_link":"sms:…",</span>
+<span class="s">#       "expires_at":"…" } }   — show these to the user</span>
+
+<span class="s"># 2. Poll status (or use a webhook, below)</span>
+curl https://your-coordinator/v1/verifications/$SESSION_ID \
+  -H <span class="s">"Authorization: Bearer $CTV_API_KEY"</span>
+<span class="s"># → { "session_id":"…", "status":"verified",</span>
+<span class="s">#     "verified_msisdn":"+8801712345678", … }</span></div>
+      </div>
+
+      <h2>Webhooks — get told instead of polling</h2>
+      <div class="card">
+        <p>Set a <span class="mono">webhook_url</span> when you create the app. On success the Coordinator POSTs
+          to it; verify the signature with your <span class="mono">webhook_secret</span> and mark the user verified.</p>
+        <div class="snippet"><span class="s"># Coordinator → your webhook_url</span>
+POST /your/webhook
+X-CTV-Event: verification.verified
+X-CTV-Signature: <span class="s">hex(HMAC-SHA256(webhook_secret, raw_body))</span>
+
+{ <span class="s">"event"</span>: <span class="s">"verification.verified"</span>, <span class="s">"session_id"</span>: <span class="s">"…"</span>,
+  <span class="s">"verified_msisdn"</span>: <span class="s">"+8801712345678"</span>, <span class="s">"channel"</span>: <span class="s">"sms"</span>, <span class="s">"ts"</span>: <span class="s">"…"</span> }
+
+<span class="s"># Recompute the HMAC over the raw body and compare before trusting it.</span></div>
+      </div>
+
+      <h2>SDKs (these wrap the REST API for you)</h2>
+      <div class="card"><p style="margin:0">Backend: <span class="mono">@calltoverify/sdk</span> (Node), <span class="mono">calltoverify</span> (Python),
+        and a PHP/Laravel package — each does the start/status/webhook-verify calls above.
+        Front-end: a drop-in web widget plus React and Flutter components render the user-facing flow
+        (text us, missed call, DTMF). See <span class="mono">sdk-server-*</span>, <span class="mono">widget-web</span>,
+        <span class="mono">sdk-client-react</span>, and <span class="mono">sdk-client-flutter</span> in the repository.</p></div>
     </section>
 
   </div></main>
@@ -225,6 +269,30 @@ const j = (r) => r.json();
 const $ = (id) => document.getElementById(id);
 const TYPE = { android:'Android phone', pi:'Raspberry Pi' };
 const typeLabel = (t) => TYPE[t] || t || 'receiver';
+const CH_LABEL = { sms:'SMS', call:'missed-call', dtmf:'DTMF' };
+const CH_NEEDS = { sms:'a phone or Pi', call:'a phone or Pi', dtmf:'a Raspberry Pi' };
+let CH_AVAIL = { sms:false, call:false, dtmf:false };
+
+// DTMF needs a Pi (stock Android can't read the in-call keypad audio). When the
+// device type isn't a Pi, the DTMF channel is unchecked and disabled.
+function applyTypeConstraints(){
+  const pi = $('pType').value === 'pi', c = $('dtmfChk');
+  if(!pi) c.checked = false;
+  c.disabled = !pi;
+  $('dtmfLabel').style.opacity = pi ? 1 : .45;
+  $('dtmfLabel').title = pi ? '' : 'DTMF needs a Raspberry Pi with Asterisk';
+}
+
+// Guide the test screen: only allow starting a channel that some online receiver
+// actually accepts, otherwise point the user at "Add a device".
+function updateTestHint(){
+  const c = $('tChannel').value, ok = CH_AVAIL[c], btn = $('tStart');
+  if(!btn) return;
+  btn.disabled = !ok; btn.style.opacity = ok ? 1 : .5; btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+  $('tHint').innerHTML = ok
+    ? `<span class="pill ok">● ready</span> An online receiver accepts ${CH_LABEL[c]}.`
+    : `No online receiver accepts ${CH_LABEL[c]} yet. <a data-view="add" style="color:var(--brand);cursor:pointer">Add ${CH_NEEDS[c]} →</a>`;
+}
 
 /* ---- nav / views ---- */
 const VIEWS = ['overview','add','devices','test','integrate'];
@@ -283,7 +351,7 @@ async function pair(){
 /* ---- test ---- */
 async function startTest(){
   const v = await fetch('/api/start',{method:'POST',body:JSON.stringify({Channel:$('tChannel').value})}).then(j).catch(()=>null);
-  if(!v || !v.SessionID){ $('testResult').innerHTML='<p class="muted" style="margin:0">No online receiver accepts this channel. Add one first.</p>'; return; }
+  if(!v || !v.SessionID){ $('testResult').innerHTML=`<p class="muted" style="margin:0">No online receiver is ready for this channel. <a data-view="add" style="color:var(--brand);cursor:pointer">Add a device →</a></p>`; return; }
   const i = v.Instructions;
   let html = `<p class="muted" style="margin:0 0 8px">${i.Action}</p>`;
   if(i.Code){ html += `<div class="code">${i.Code.split('').map(d=>`<div class="digit">${d}</div>`).join('')}</div>`; }
@@ -312,6 +380,10 @@ async function refresh(){
   const devs = await fetch('/api/devices').then(j).catch(()=>[]);
   const ss = await fetch('/api/sessions').then(j).catch(()=>[]);
 
+  CH_AVAIL = { sms:false, call:false, dtmf:false };
+  for(const d of devs){ if(d.Status==='online' && (d.Numbers||[]).length){ for(const c of (d.Capabilities||[])) if(c in CH_AVAIL) CH_AVAIL[c] = true; } }
+  updateTestHint();
+
   const online = devs.filter(d=>d.Status==='online').length;
   const numbers = devs.reduce((n,d)=>n+((d.Numbers||[]).length),0);
   const verified = ss.filter(s=>s.Status==='verified').length;
@@ -336,7 +408,7 @@ async function refresh(){
     <td class="mono">${s.VerifiedMSISDN||'—'}</td><td class="muted">${ago(s.CreatedAt)}</td></tr>`).join('')
     : '<tr><td colspan="4" class="empty">No verifications yet.</td></tr>';
 }
-refresh(); setInterval(refresh,3000);
+applyTypeConstraints(); refresh(); setInterval(refresh,3000);
 </script>
 </body>
 </html>
