@@ -1,26 +1,74 @@
-# sdk-server-node
+# @calltoverify/sdk
 
-Backend SDK for Node.js / TypeScript. The thin client your server uses to talk to the
-Coordinator.
+Backend SDK for Node.js / TypeScript. A thin, dependency-free client for the CallToVerify
+Coordinator's developer API.
 
-> **Status: planned (Phase 1).** Placeholder directory.
+> **Status: alpha (Phase 1 implemented).** Start verifications, poll status, verify webhooks.
 
-## Planned API
+## Install
+
+```bash
+npm install @calltoverify/sdk
+```
+
+Requires Node 18+ (uses the global `fetch`).
+
+## Usage
 
 ```ts
-const ctv = new CallToVerify({ baseUrl, apiKey, apiSecret });
+import { CallToVerify } from "@calltoverify/sdk";
 
-// Start a verification (binding mode and channel optional; defaults from app config).
-const v = await ctv.startVerification({ channel: "sms", claimedMsisdn });
-// v.instructions -> { number, code, deepLink, expiresAt }
+const ctv = new CallToVerify({
+  baseUrl: "https://verify.example.com", // your Coordinator
+  apiKey: process.env.CTV_API_KEY!,
+  webhookSecret: process.env.CTV_WEBHOOK_SECRET, // only needed for verifyWebhook
+});
+
+// Start a verification. Returns instructions to show the user.
+const v = await ctv.startVerification({ channel: "sms" });
+// v.instructions -> { number, code, channel, action, deepLink, expiresAt }
 
 // Poll, or rely on the webhook.
 const status = await ctv.checkStatus(v.sessionId);
-
-// Verify a webhook signature in your HTTP handler.
-ctv.verifyWebhook(rawBody, signatureHeader); // throws on mismatch
+if (status.status === "verified") {
+  console.log("verified number:", status.verifiedMsisdn);
+}
 ```
 
-## Planned stack
+### Claim mode
 
-TypeScript, zero/minimal dependencies, published to npm.
+```ts
+const v = await ctv.startVerification({
+  channel: "sms",
+  bindingMode: "claim",
+  claimedMsisdn: "+8801712345678",
+});
+```
+
+### Verifying webhooks
+
+```ts
+// In your HTTP handler, pass the RAW request body and the X-CTV-Signature header.
+try {
+  const event = ctv.verifyWebhook(rawBody, req.headers["x-ctv-signature"]);
+  // event -> { event, sessionId, verifiedMsisdn, channel, ts }
+} catch (err) {
+  // CallToVerifyError on signature mismatch -> reject the request
+}
+```
+
+## API
+
+- `new CallToVerify({ baseUrl, apiKey, webhookSecret?, fetch? })`
+- `startVerification(params?) => Promise<Verification>`
+- `checkStatus(sessionId) => Promise<VerificationStatus>`
+- `verifyWebhook(rawBody, signature) => WebhookEvent` (throws `CallToVerifyError` on mismatch)
+
+Non-2xx responses throw `CallToVerifyError` with `status` and `code`.
+
+## Develop
+
+```bash
+npm install
+npm test     # builds, then runs node:test against the compiled output
+```

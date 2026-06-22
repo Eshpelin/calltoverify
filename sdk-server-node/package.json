@@ -1,0 +1,44 @@
+{
+  "name": "@calltoverify/sdk",
+  "version": "0.1.0",
+  "description": "Server SDK for CallToVerify — free, self-hosted phone number verification.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node --test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "otp",
+    "phone-verification",
+    "2fa",
+    "sms",
+    "calltoverify"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eshpelin/calltoverify.git",
+    "directory": "sdk-server-node"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
