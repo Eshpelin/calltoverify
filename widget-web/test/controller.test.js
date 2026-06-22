@@ -83,3 +83,36 @@ test("a transient poll failure stays pending", async () => {
   assert.equal(await ctrl.poll(), "pending"); // threw, still pending
   assert.equal(await ctrl.poll(), "pending");
 });
+
+test("begin passes the chosen channel to start", async () => {
+  let seen;
+  const ctrl = createController({
+    start: async (channel) => {
+      seen = channel;
+      return { sessionId: "s1", instructions: instr };
+    },
+    status: async () => ({ status: "pending" }),
+  });
+  await ctrl.begin("call");
+  assert.equal(seen, "call");
+});
+
+test("reset returns the controller to idle and re-emits", async () => {
+  const ctrl = createController({
+    start: async () => ({ sessionId: "s1", instructions: instr }),
+    status: async () => ({ status: "pending" }),
+  });
+  await ctrl.begin("sms");
+  assert.equal(ctrl.state(), "pending");
+
+  let reset = false;
+  ctrl.on("reset", () => (reset = true));
+  ctrl.reset();
+  assert.equal(ctrl.state(), "idle");
+  assert.equal(ctrl.sessionId(), undefined);
+  assert.ok(reset);
+
+  // Can start again after reset.
+  await ctrl.begin("call");
+  assert.equal(ctrl.state(), "pending");
+});
