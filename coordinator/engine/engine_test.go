@@ -233,6 +233,36 @@ func TestSMSNotSerialised(t *testing.T) {
 	}
 }
 
+func TestAutoBlockBruteForce(t *testing.T) {
+	ctx := context.Background()
+	eng, ts, _ := newTestEngine(t)
+	pairing, err := eng.NewPairing(ctx, PairingParams{
+		Endpoint: ts.URL + "/ctv", Name: "phone", MSISDN: "+8801700000020", Channels: []string{"sms"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deviceReq(t, ts, pairing, "/ctv/devices/heartbeat", map[string]any{})
+
+	const attacker = "+8801799999999"
+	body := func(b string) map[string]any {
+		return map[string]any{"number": "+8801700000020", "type": "sms", "sender": attacker, "body": b}
+	}
+
+	// Five failed (wrong-code) inbounds trip the auto-block.
+	for i := 0; i < 5; i++ {
+		code, in := deviceReq(t, ts, pairing, "/ctv/inbound", body("000000"))
+		if code != 200 || in["matched"] != false {
+			t.Fatalf("attempt %d should not match: %d %v", i, code, in)
+		}
+	}
+	// The next inbound from that sender is rejected as blocked.
+	_, in := deviceReq(t, ts, pairing, "/ctv/inbound", body("000000"))
+	if in["reason"] != "blocked" {
+		t.Fatalf("expected blocked after brute force, got %v", in)
+	}
+}
+
 func asEngineError(err error, target **Error) bool {
 	e, ok := err.(*Error)
 	if ok {
