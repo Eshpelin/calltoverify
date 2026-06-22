@@ -121,6 +121,17 @@ func (s *pgStore) SetHeartbeat(ctx context.Context, deviceID string) error {
 	return nil
 }
 
+func (s *pgStore) DeleteDevice(ctx context.Context, id string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM devices WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *pgStore) ListNumbersByDevice(ctx context.Context, deviceID string) ([]Number, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, device_id, msisdn, channels, status, created_at FROM numbers WHERE device_id = $1`, deviceID)

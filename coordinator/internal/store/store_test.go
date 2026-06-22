@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -75,6 +76,63 @@ func seed(t *testing.T, st Store, channels []string, msisdn string) (App, Device
 		t.Fatalf("CreateNumber: %v", err)
 	}
 	return app, dev, num
+}
+
+// TestParityDeleteDeviceCascade checks that removing a device deletes its
+// numbers (ON DELETE CASCADE) while retaining past verifications.
+func TestParityDeleteDeviceCascade(t *testing.T) {
+	runParity(t, func(t *testing.T, st Store) {
+		ctx := context.Background()
+		app, dev, num := seed(t, st, []string{"sms"}, "+8801700000055")
+
+		// A past, verified session referencing the device's number.
+		code := "654321"
+		sess, err := st.CreateSession(ctx, Session{
+			AppID: app.ID, Channel: "sms", BindingMode: "derive",
+			NumberID: &num.ID, Code: &code, ExpiresAt: time.Now().Add(time.Minute),
+		})
+		if err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+		if _, err := st.VerifySession(ctx, sess.ID, "+8801712345678"); err != nil {
+			t.Fatalf("VerifySession: %v", err)
+		}
+
+		if err := st.DeleteDevice(ctx, dev.ID); err != nil {
+			t.Fatalf("DeleteDevice: %v", err)
+		}
+
+		// Device is gone.
+		if _, err := st.GetDeviceByID(ctx, dev.ID); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("GetDeviceByID after delete = %v, want ErrNotFound", err)
+		}
+		// Its numbers cascaded away.
+		nums, err := st.ListNumbersByDevice(ctx, dev.ID)
+		if err != nil {
+			t.Fatalf("ListNumbersByDevice: %v", err)
+		}
+		if len(nums) != 0 {
+			t.Fatalf("numbers after device delete = %d, want 0", len(nums))
+		}
+		// The past verification is retained.
+		recent, err := st.ListRecentSessions(ctx, app.ID, 10)
+		if err != nil {
+			t.Fatalf("ListRecentSessions: %v", err)
+		}
+		found := false
+		for _, s := range recent {
+			if s.ID == sess.ID {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("verified session not retained after device delete")
+		}
+		// Deleting an unknown device is ErrNotFound.
+		if err := st.DeleteDevice(ctx, dev.ID); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("DeleteDevice(unknown) = %v, want ErrNotFound", err)
+		}
+	})
 }
 
 func TestParitySMSVerifyFlow(t *testing.T) {

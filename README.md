@@ -57,12 +57,15 @@ deep link and a live countdown, and a verified state.
 ### Self-hosted console
 
 The implementer's view ([`coordinator/examples/dashboard`](coordinator/examples/dashboard)): a
-guided onboarding wizard — pair a phone, run a test verification — plus a live dashboard of
-receivers and recent verifications. Embeds the engine, so there is no separate service and no
-database to run.
+left-nav console to add and manage receivers, run a test verification, and watch a live dashboard
+of receivers and recent verifications across all three channels. Embeds the engine, so there is no
+separate service and no database to run.
 
 <p>
-  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console.png" width="820" alt="Self-hosted console: onboarding wizard, receivers table, and recent verifications" />
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console.png" width="820" alt="Self-hosted console overview: receivers (an Android phone and a Raspberry Pi) and recent SMS, missed-call, and DTMF verifications" />
+</p>
+<p>
+  <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console-devices.png" width="820" alt="Manage devices: each receiver's type, numbers, channels, and status, with a remove action" />
 </p>
 
 ### Android receiver app

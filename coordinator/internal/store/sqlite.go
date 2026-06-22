@@ -172,6 +172,17 @@ func (s *sqliteStore) SetHeartbeat(ctx context.Context, deviceID string) error {
 	return nil
 }
 
+func (s *sqliteStore) DeleteDevice(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM devices WHERE id=?`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *sqliteStore) ListNumbersByDevice(ctx context.Context, deviceID string) ([]Number, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, device_id, msisdn, channels, status, created_at FROM numbers WHERE device_id = ?`, deviceID)

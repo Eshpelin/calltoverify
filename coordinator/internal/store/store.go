@@ -41,6 +41,10 @@ type Store interface {
 	SetHeartbeat(ctx context.Context, deviceID string) error
 	ListNumbersByDevice(ctx context.Context, deviceID string) ([]Number, error)
 	ListDevices(ctx context.Context) ([]Device, error)
+	// DeleteDevice removes a device and, via ON DELETE CASCADE, its numbers.
+	// Past sessions are retained (their number_id is set null). Returns
+	// ErrNotFound if no device has the given id.
+	DeleteDevice(ctx context.Context, id string) error
 
 	CreateNumber(ctx context.Context, n Number) (Number, error)
 	GetNumberByMSISDN(ctx context.Context, msisdn string) (Number, error)

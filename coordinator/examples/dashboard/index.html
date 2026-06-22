@@ -13,158 +13,298 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:#fafafe;color:var(--ink);font-family:var(--font);line-height:1.5}
-  .wrap{max-width:1040px;margin:0 auto;padding:28px 22px 60px}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-  .logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:20px;letter-spacing:-.02em}
-  .logo .mark{width:34px;height:34px;border-radius:9px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center}
-  .pill{font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
-  .pill.ok{background:rgba(21,163,74,.12);color:var(--success)}
-  .pill.off{background:rgba(180,83,9,.12);color:var(--amber)}
-  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface);color:var(--brand-strong)}
-  .lead{color:var(--muted);margin:0 0 26px;font-size:14.5px}
-  h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:30px 0 12px}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .app{display:flex;min-height:100vh}
+
+  /* Sidebar */
+  .side{width:244px;flex-shrink:0;background:linear-gradient(180deg,#4f46e5,#3f37c9);
+    color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+  .side .logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:19px;letter-spacing:-.02em;color:#fff}
+  .side .logo .mark{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .side .sub{font-size:11.5px;color:rgba(255,255,255,.6);margin:14px 4px 8px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+    color:rgba(255,255,255,.82);font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+  .nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+  .nav a.active{background:#fff;color:var(--brand-strong)}
+  .nav a svg{width:17px;height:17px;flex-shrink:0}
+  .side .foot{margin-top:auto;padding:12px;border-radius:12px;background:rgba(255,255,255,.10);font-size:12.5px}
+  .side .foot .n{font-weight:800;font-size:15px}
+
+  /* Main */
+  .main{flex:1;min-width:0}
+  .inner{max-width:940px;margin:0 auto;padding:30px 32px 70px}
+  .view{display:none}.view.active{display:block}
+  .h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0 0 24px;font-size:14.5px;max-width:640px}
+  h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:28px 0 12px}
+
   .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
-  .step{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:6px}
   .card h3{margin:0 0 4px;font-size:16px;font-weight:700}
   .card p{margin:0 0 14px;color:var(--muted);font-size:13px}
+  .row2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:start}
+  @media(max-width:760px){.row2{grid-template-columns:1fr}.side{position:static;height:auto;width:100%}.app{flex-direction:column}}
+
   label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:10px 0 5px}
   input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;background:#fff}
-  .chk{display:flex;gap:14px;margin-top:6px}
+  .chk{display:flex;gap:14px;margin-top:6px;flex-wrap:wrap}
   .chk label{display:flex;align-items:center;gap:6px;font-weight:500;color:var(--ink);margin:0;font-size:13px}
   .chk input{width:auto}
   button{font-family:inherit;cursor:pointer;border:none}
   .btn{background:var(--brand);color:#fff;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:600;width:100%;margin-top:14px}
   .btn:hover{background:var(--brand-strong)}
-  .btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--border)}
-  .qr img{display:block;margin:6px auto 10px;border-radius:10px;width:180px;height:auto;image-rendering:pixelated}
+  .btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--border);width:auto;padding:8px 14px;margin:0}
+  .btn.danger{background:#fff;color:#b91c1c;border:1px solid rgba(185,28,28,.25);width:auto;padding:7px 12px;margin:0;font-size:13px}
+  .btn.danger:hover{background:#fef2f2}
+
+  .qr img{display:block;margin:6px auto 10px;border-radius:10px;width:184px;height:auto;image-rendering:pixelated}
   .code{display:flex;gap:7px;justify-content:center;margin:6px 0 12px}
-  .digit{width:38px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--brand-strong);background:var(--surface);border-radius:9px}
+  .digit{width:40px;height:50px;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;color:var(--brand-strong);background:var(--surface);border-radius:9px}
   .wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
   .spinner{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--brand);animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   .done{text-align:center;padding:6px 0}
   .done .ic{width:48px;height:48px;border-radius:50%;background:rgba(21,163,74,.12);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 8px}
+
+  .pill{font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+  .pill.ok{background:rgba(21,163,74,.12);color:var(--success)}
+  .pill.off{background:rgba(180,83,9,.12);color:var(--amber)}
+  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface);color:var(--brand-strong)}
+  .chan{font-size:11px;font-weight:600;padding:3px 8px;border-radius:7px;background:var(--surface);color:var(--muted);margin-right:5px}
+
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:0 12px 8px}
-  td{padding:11px 12px;border-top:1px solid var(--border)}
+  td{padding:12px;border-top:1px solid var(--border);vertical-align:middle}
   .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
   .muted{color:var(--muted)}
-  .empty{color:var(--muted);font-size:13px;padding:16px 12px}
-  .snippet{background:#15151f;color:#e7e7f2;border-radius:10px;padding:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;overflow:auto;white-space:pre}
+  .empty{color:var(--muted);font-size:13px;padding:18px 12px}
+  .snippet{background:#15151f;color:#e7e7f2;border-radius:10px;padding:15px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;overflow:auto;white-space:pre}
   .snippet .k{color:#a78bfa}.snippet .s{color:#7dd3a0}
+  .stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .statcard{flex:1;min-width:150px;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .statcard .v{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .statcard .l{font-size:12.5px;color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
+<div class="app">
+  <aside class="side">
     <div class="logo"><span class="mark">✓</span> CallToVerify</div>
-    <span class="tag">self-hosted console</span>
-  </header>
-  <p class="lead">Self-hosted phone verification. The person verifying contacts a spare phone you control, instead of you sending an OTP. Pair a receiver, run a test, and watch verifications land.</p>
+    <div class="sub">Console</div>
+    <nav class="nav" id="nav">
+      <a data-view="overview" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Overview</a>
+      <a data-view="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg> Add a device</a>
+      <a data-view="devices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg> Manage devices</a>
+      <a data-view="test"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg> Run a test</a>
+      <a data-view="integrate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12"/></svg> Integrate</a>
+    </nav>
+    <div class="foot">
+      <div class="n" id="footCount">—</div>
+      <div class="muted" style="color:rgba(255,255,255,.7)">receivers online</div>
+    </div>
+  </aside>
 
-  <h2>Get started</h2>
-  <div class="grid">
-    <div class="card">
-      <div class="step">STEP 1</div>
-      <h3>Pair a receiver</h3>
-      <p>Scan this QR with the CallToVerify Android app to connect a spare phone.</p>
-      <div id="pairForm">
-        <label>Phone label</label><input id="pName" value="Front desk phone" />
-        <label>SIM number (MSISDN)</label><input id="pMsisdn" value="+8801700000001" />
-        <label>Channels</label>
-        <div class="chk">
-          <label><input type="checkbox" value="sms" checked /> SMS</label>
-          <label><input type="checkbox" value="call" /> Missed call</label>
-          <label><input type="checkbox" value="dtmf" /> DTMF</label>
+  <main class="main"><div class="inner">
+
+    <!-- OVERVIEW -->
+    <section class="view active" id="view-overview">
+      <div class="h1">Overview</div>
+      <p class="lead">Self-hosted phone verification. The person verifying contacts a spare phone you control, instead of you sending an OTP. Pair a receiver, run a test, and watch verifications land.</p>
+      <div class="stat">
+        <div class="statcard"><div class="v" id="stOnline">0</div><div class="l">Receivers online</div></div>
+        <div class="statcard"><div class="v" id="stNumbers">0</div><div class="l">Numbers provisioned</div></div>
+        <div class="statcard"><div class="v" id="stVerified">0</div><div class="l">Verified (recent)</div></div>
+      </div>
+      <h2>Receivers</h2>
+      <div class="card" style="padding:8px 8px 4px">
+        <table><thead><tr><th>Name</th><th>Type</th><th>Numbers</th><th>Status</th><th>Last seen</th></tr></thead>
+        <tbody id="devices"><tr><td colspan="5" class="empty">No receivers paired yet. <a data-view="add" class="navlink" style="color:var(--brand);cursor:pointer">Add one →</a></td></tr></tbody></table>
+      </div>
+      <h2>Recent verifications</h2>
+      <div class="card" style="padding:8px 8px 4px">
+        <table><thead><tr><th>Channel</th><th>Status</th><th>Verified number</th><th>When</th></tr></thead>
+        <tbody id="sessions"><tr><td colspan="4" class="empty">No verifications yet.</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <!-- ADD DEVICE -->
+    <section class="view" id="view-add">
+      <div class="h1">Add a device</div>
+      <p class="lead">A receiver is a spare Android phone (or a Raspberry Pi) with a SIM. Fill in its number, pick the channels it should accept, and scan the QR with the CallToVerify app to connect it.</p>
+      <div class="row2">
+        <div class="card">
+          <h3>Receiver details</h3>
+          <p>The SIM number is the number end users will contact. You enter it here — it is not read from the SIM.</p>
+          <div id="pairForm">
+            <label>Phone label</label><input id="pName" value="Front desk phone" />
+            <label>Device type</label>
+            <select id="pType"><option value="android">Android phone</option><option value="pi">Raspberry Pi</option></select>
+            <label>SIM number (MSISDN)</label><input id="pMsisdn" value="+8801700000001" />
+            <label>Channels this receiver accepts</label>
+            <div class="chk">
+              <label><input type="checkbox" value="sms" checked /> SMS + code</label>
+              <label><input type="checkbox" value="call" /> Missed call</label>
+              <label><input type="checkbox" value="dtmf" /> DTMF (Pi only)</label>
+            </div>
+            <button class="btn" onclick="pair()">Generate pairing QR</button>
+          </div>
         </div>
-        <button class="btn" onclick="pair()">Generate pairing QR</button>
+        <div class="card">
+          <h3>Scan to connect</h3>
+          <p>Open the CallToVerify app on the receiver and scan this code.</p>
+          <div id="pairResult" style="display:none">
+            <div id="qr" class="qr"></div>
+            <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the device to come online…</div>
+          </div>
+          <div id="pairHint" class="muted" style="font-size:13px;padding:30px 4px;text-align:center">The QR appears here once you generate it.</div>
+        </div>
       </div>
-      <div id="pairResult" style="display:none">
-        <div id="qr" class="qr"></div>
-        <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the device to come online…</div>
+    </section>
+
+    <!-- MANAGE DEVICES -->
+    <section class="view" id="view-devices">
+      <div class="h1">Manage devices</div>
+      <p class="lead">Every receiver you have paired. Remove one to revoke its credentials and free its numbers. Past verifications are kept.</p>
+      <div style="margin-bottom:14px"><button class="btn ghost" data-view="add">+ Add a device</button></div>
+      <div class="card" style="padding:8px 8px 4px">
+        <table><thead><tr><th>Name</th><th>Type</th><th>Numbers</th><th>Channels</th><th>Status</th><th></th></tr></thead>
+        <tbody id="manage"><tr><td colspan="6" class="empty">No receivers paired yet.</td></tr></tbody></table>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="step">STEP 2</div>
-      <h3>Run a test</h3>
-      <p>Start a verification and complete it from a phone (or the receiver).</p>
-      <label>Channel</label>
-      <select id="tChannel"><option value="sms">SMS</option><option value="call">Missed call</option><option value="dtmf">DTMF</option></select>
-      <button class="btn" onclick="startTest()">Start verification</button>
-      <div id="testResult" style="margin-top:14px"></div>
-    </div>
+    <!-- TEST -->
+    <section class="view" id="view-test">
+      <div class="h1">Run a test</div>
+      <p class="lead">Start a verification, then complete it from a phone (text the code, give a missed call, or enter the code on a call). The result lands here automatically.</p>
+      <div class="row2">
+        <div class="card">
+          <h3>Start a verification</h3>
+          <p>Pick the channel the user will use. You need an online receiver that accepts it.</p>
+          <label>Channel</label>
+          <select id="tChannel"><option value="sms">SMS + code</option><option value="call">Missed call</option><option value="dtmf">DTMF</option></select>
+          <button class="btn" onclick="startTest()">Start verification</button>
+        </div>
+        <div class="card">
+          <h3>Result</h3>
+          <div id="testResult"><p class="muted" style="margin:0">Start a verification to see the instructions and the live result.</p></div>
+        </div>
+      </div>
+    </section>
 
-    <div class="card">
-      <div class="step">STEP 3</div>
-      <h3>Integrate</h3>
-      <p>Embed the engine in your Go backend. That's the whole integration.</p>
-      <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
+    <!-- INTEGRATE -->
+    <section class="view" id="view-integrate">
+      <div class="h1">Integrate</div>
+      <p class="lead">Embed the engine in your Go backend. Your own server becomes the endpoint the receiver talks to — there is no separate service to run.</p>
+      <div class="card">
+        <h3>Go</h3>
+        <p>Mount the device handler and start verifications from your code.</p>
+        <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
   OnVerified: <span class="k">func</span>(ev ctv.Event) {
-    <span class="s">// mark the user verified</span>
+    <span class="s">// mark the user verified in your DB</span>
   },
 })
+<span class="s">// the receiver app posts here; pair it with a QR from "Add a device"</span>
 mux.Handle(<span class="s">"/ctv/"</span>, eng.DeviceHandler(<span class="s">"/ctv"</span>))
-v, _ := eng.StartVerification(ctx,
-  ctv.Params{Channel: <span class="s">"sms"</span>})</div>
-    </div>
-  </div>
 
-  <h2>Receivers</h2>
-  <div class="card" style="padding:8px 8px 4px">
-    <table><thead><tr><th>Name</th><th>Type</th><th>Numbers</th><th>Status</th><th>Last seen</th></tr></thead>
-    <tbody id="devices"><tr><td colspan="5" class="empty">No receivers paired yet.</td></tr></tbody></table>
-  </div>
+v, _ := eng.StartVerification(ctx, ctv.Params{Channel: <span class="s">"sms"</span>})
+<span class="s">// show v.Instructions to the user; poll eng.Status(ctx, v.SessionID)</span></div>
+      </div>
+      <h2>Other front ends</h2>
+      <div class="card"><p style="margin:0">A drop-in web widget and React / Flutter components render the user-facing flow (text us, missed call, DTMF) against your backend. See the SDKs in the repository.</p></div>
+    </section>
 
-  <h2>Recent verifications</h2>
-  <div class="card" style="padding:8px 8px 4px">
-    <table><thead><tr><th>Channel</th><th>Status</th><th>Verified number</th><th>When</th></tr></thead>
-    <tbody id="sessions"><tr><td colspan="4" class="empty">No verifications yet.</td></tr></tbody></table>
-  </div>
+  </div></main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 const j = (r) => r.json();
+const $ = (id) => document.getElementById(id);
+const TYPE = { android:'Android phone', pi:'Raspberry Pi' };
+const typeLabel = (t) => TYPE[t] || t || 'receiver';
+
+/* ---- nav / views ---- */
+const VIEWS = ['overview','add','devices','test','integrate'];
+function setView(name){
+  if(!VIEWS.includes(name)) name='overview';
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active', a.dataset.view===name));
+  if(location.hash!=='#'+name) history.replaceState(null,'','#'+name);
+  window.scrollTo(0,0);
+}
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-view]');
+  if(el){ e.preventDefault(); setView(el.dataset.view); }
+});
+window.addEventListener('hashchange', ()=>setView(location.hash.slice(1)));
+setView(location.hash.slice(1) || 'overview');
+
+/* ---- pairing ---- */
 async function pair(){
   const channels = [...document.querySelectorAll('#pairForm .chk input:checked')].map(c=>c.value);
-  const body = { Name: pName.value, MSISDN: pMsisdn.value, Channels: channels };
+  const body = { Name: $('pName').value, Type: $('pType').value, MSISDN: $('pMsisdn').value, Channels: channels };
   const res = await fetch('/api/pair',{method:'POST',body:JSON.stringify(body)}).then(j);
-  pairForm.style.display='none'; pairResult.style.display='block';
+  $('pairHint').style.display='none'; $('pairResult').style.display='block';
   const qr = qrcode(0, 'M'); qr.addData(res.payload); qr.make();
-  document.getElementById('qr').innerHTML = qr.createImgTag(4, 8);
+  $('qr').innerHTML = qr.createImgTag(4, 8);
   const watch = setInterval(async()=>{
     const devs = await fetch('/api/devices').then(j);
     if(devs.some(d=>d.ID===res.device_id && d.Status==='online')){ clearInterval(watch);
-      pairWait.innerHTML='<span class="pill ok">● online</span> Receiver connected.'; }
+      $('pairWait').innerHTML='<span class="pill ok">● online</span> Receiver connected.'; refresh(); }
   },1500);
 }
+
+/* ---- test ---- */
 async function startTest(){
-  const v = await fetch('/api/start',{method:'POST',body:JSON.stringify({Channel:tChannel.value})}).then(j).catch(()=>null);
-  if(!v || !v.SessionID){ testResult.innerHTML='<p class="muted" style="margin:0">No online receiver for this channel. Pair one first.</p>'; return; }
+  const v = await fetch('/api/start',{method:'POST',body:JSON.stringify({Channel:$('tChannel').value})}).then(j).catch(()=>null);
+  if(!v || !v.SessionID){ $('testResult').innerHTML='<p class="muted" style="margin:0">No online receiver accepts this channel. Add one first.</p>'; return; }
   const i = v.Instructions;
   let html = `<p class="muted" style="margin:0 0 8px">${i.Action}</p>`;
   if(i.Code){ html += `<div class="code">${i.Code.split('').map(d=>`<div class="digit">${d}</div>`).join('')}</div>`; }
   html += `<div class="wait" id="tw"><span class="spinner"></span> Waiting for the inbound signal…</div>`;
-  testResult.innerHTML = html;
+  $('testResult').innerHTML = html;
   const watch = setInterval(async()=>{
     const st = await fetch('/api/status?id='+v.SessionID).then(j);
-    if(st.Status==='verified'){ clearInterval(watch);
-      testResult.innerHTML=`<div class="done"><div class="ic">✓</div><div style="font-weight:700">Verified</div><div class="mono muted">${st.VerifiedMSISDN}</div></div>`; }
-    else if(st.Status==='expired'){ clearInterval(watch); document.getElementById('tw').innerHTML='Expired. Try again.'; }
+    if(st.Status==='verified'){ clearInterval(watch); refresh();
+      $('testResult').innerHTML=`<div class="done"><div class="ic">✓</div><div style="font-weight:700">Verified</div><div class="mono muted">${st.VerifiedMSISDN}</div></div>`; }
+    else if(st.Status==='expired'){ clearInterval(watch); $('tw').innerHTML='Expired. Try again.'; }
   },2000);
 }
+
+/* ---- manage ---- */
+async function removeDevice(id, name){
+  if(!confirm('Remove "'+name+'"? Its credentials are revoked and its numbers are freed. Past verifications are kept.')) return;
+  const r = await fetch('/api/devices?id='+encodeURIComponent(id),{method:'DELETE'});
+  if(r.ok || r.status===204){ refresh(); } else { alert('Could not remove the device.'); }
+}
+
+/* ---- shared render ---- */
 function ago(ts){ const s=Math.max(0,(Date.now()-Date.parse(ts))/1000); if(s<60)return Math.floor(s)+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago'; return Math.floor(s/3600)+'h ago'; }
+function statusPill(s){ return s==='online'?'<span class="pill ok">● online</span>':'<span class="pill off">○ offline</span>'; }
+
 async function refresh(){
   const devs = await fetch('/api/devices').then(j).catch(()=>[]);
-  document.getElementById('devices').innerHTML = devs.length ? devs.map(d=>`<tr>
-    <td>${d.Name}</td><td class="muted">${d.Type}</td><td class="mono">${(d.Numbers||[]).join(', ')||'—'}</td>
-    <td>${d.Status==='online'?'<span class="pill ok">● online</span>':'<span class="pill off">○ offline</span>'}</td>
-    <td class="muted">${d.LastHeartbeat?ago(d.LastHeartbeat):'never'}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="empty">No receivers paired yet.</td></tr>';
   const ss = await fetch('/api/sessions').then(j).catch(()=>[]);
-  document.getElementById('sessions').innerHTML = ss.length ? ss.map(s=>`<tr>
+
+  const online = devs.filter(d=>d.Status==='online').length;
+  const numbers = devs.reduce((n,d)=>n+((d.Numbers||[]).length),0);
+  const verified = ss.filter(s=>s.Status==='verified').length;
+  $('footCount').textContent = online;
+  $('stOnline').textContent = online; $('stNumbers').textContent = numbers; $('stVerified').textContent = verified;
+
+  $('devices').innerHTML = devs.length ? devs.map(d=>`<tr>
+    <td>${d.Name}</td><td class="muted">${typeLabel(d.Type)}</td><td class="mono">${(d.Numbers||[]).join(', ')||'—'}</td>
+    <td>${statusPill(d.Status)}</td><td class="muted">${d.LastHeartbeat?ago(d.LastHeartbeat):'never'}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="empty">No receivers paired yet. <a data-view="add" style="color:var(--brand);cursor:pointer">Add one →</a></td></tr>';
+
+  $('manage').innerHTML = devs.length ? devs.map(d=>`<tr>
+    <td>${d.Name}</td><td class="muted">${typeLabel(d.Type)}</td><td class="mono">${(d.Numbers||[]).join(', ')||'—'}</td>
+    <td>${(d.Capabilities||[]).map(c=>`<span class="chan">${c}</span>`).join('')||'—'}</td>
+    <td>${statusPill(d.Status)}</td>
+    <td style="text-align:right"><button class="btn danger" onclick="removeDevice('${d.ID}', ${JSON.stringify(d.Name)})">Remove</button></td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">No receivers paired yet.</td></tr>';
+
+  $('sessions').innerHTML = ss.length ? ss.map(s=>`<tr>
     <td>${s.Channel}</td>
     <td>${s.Status==='verified'?'<span class="pill ok">verified</span>':'<span class="tag">'+s.Status+'</span>'}</td>
     <td class="mono">${s.VerifiedMSISDN||'—'}</td><td class="muted">${ago(s.CreatedAt)}</td></tr>`).join('')
