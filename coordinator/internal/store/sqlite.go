@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -211,11 +212,12 @@ func (s *sqliteStore) PickNumber(ctx context.Context, channel string) (Number, e
 	if isVoiceChannel(channel) {
 		excl = ` AND NOT EXISTS (SELECT 1 FROM sessions sv WHERE sv.number_id = n.id AND sv.status='pending' AND sv.channel IN ('call','dtmf'))`
 	}
+	capFilter := fmt.Sprintf(` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status='pending') < %d`, MaxPendingPerNumber)
 	return scanNumber(s.db.QueryRowContext(ctx,
 		`SELECT n.id, n.device_id, n.msisdn, n.channels, n.status, n.created_at
 		 FROM numbers n JOIN devices d ON d.id = n.device_id
 		 WHERE n.status='active' AND d.status='online'
-		   AND EXISTS (SELECT 1 FROM json_each(n.channels) WHERE value = ?)`+excl+`
+		   AND EXISTS (SELECT 1 FROM json_each(n.channels) WHERE value = ?)`+excl+capFilter+`
 		 ORDER BY (SELECT count(*) FROM sessions s WHERE s.number_id=n.id AND s.status='pending') ASC, random()
 		 LIMIT 1`, channel))
 }

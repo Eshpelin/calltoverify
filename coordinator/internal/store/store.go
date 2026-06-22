@@ -84,3 +84,8 @@ func nowUTC() time.Time { return time.Now().UTC() }
 
 // isVoiceChannel reports whether a channel occupies a SIM's single voice line.
 func isVoiceChannel(channel string) bool { return channel == "call" || channel == "dtmf" }
+
+// MaxPendingPerNumber caps how many pending sessions a single number may hold, so
+// one number cannot be flooded into exhaustion (codes, memory) by abuse. PickNumber
+// skips numbers at the cap. The default is generous for legitimate concurrency.
+var MaxPendingPerNumber = 100
