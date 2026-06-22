@@ -183,6 +183,7 @@ ctv_device_post /v1/inbound '{"number":"+8801700000001","type":"sms","sender":"+
 
 ## Where to go next
 
+- [`integration.md`](integration.md) — the actual front-end + back-end code (the two routes + the widget) to wire this into your app.
 - [`channels.md`](channels.md) — missed-call and DTMF variants, and binding modes.
 - [`../coordinator/README.md`](../coordinator/README.md) — full endpoint and auth reference.
 - [`self-hosting.md`](self-hosting.md) — production config (env vars, Postgres, Redis, webhooks).
