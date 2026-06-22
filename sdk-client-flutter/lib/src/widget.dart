@@ -159,9 +159,13 @@ class _CallToVerifyState extends State<CallToVerify> {
 
   Widget _instr(Instructions i) {
     final children = <Widget>[];
-    if (i.channel == 'sms') {
+    if (i.channel == 'sms' || i.channel == 'dtmf') {
       children.addAll([
-        Text('Send the code below to ${i.number}', style: const TextStyle(color: _muted)),
+        Text(
+            i.channel == 'sms'
+                ? 'Send the code below to ${i.number}'
+                : 'Call ${i.number}, then enter this code on the keypad',
+            style: const TextStyle(color: _muted)),
         const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -180,7 +184,7 @@ class _CallToVerifyState extends State<CallToVerify> {
       ]);
     } else {
       children.addAll([
-        Text(i.channel == 'call' ? 'Give a quick missed call to' : 'Call and enter the code', style: const TextStyle(color: _muted)),
+        const Text('Give a quick missed call to', style: TextStyle(color: _muted)),
         const SizedBox(height: 6),
         Text(i.number, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
       ]);

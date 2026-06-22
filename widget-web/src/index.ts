@@ -167,8 +167,9 @@ function renderInstructions(root: HTMLElement, i: Instructions, L: Labels, canSw
       <div class="ctv-trust">${ICONS.shield}${escapeHtml(L.callTrust)}</div>
       ${waiting}`;
   } else {
-    root.innerHTML = `<p class="ctv-action">${escapeHtml(L.dtmfAction(i.number, i.code ?? ""))}</p>
-      <p class="ctv-num">${escapeHtml(i.number)}</p>
+    const digits = (i.code ?? "").split("").map((d) => `<span class="ctv-digit">${escapeHtml(d)}</span>`).join("");
+    root.innerHTML = `<p class="ctv-action">${escapeHtml(L.dtmfAction(i.number))}</p>
+      <div class="ctv-code">${digits}</div>
       <a class="ctv-btn" href="${escapeAttr(i.deepLink)}">${ICONS.call}${escapeHtml(L.dtmfButton)}</a>
       ${waiting}`;
   }

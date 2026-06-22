@@ -17,7 +17,7 @@ export interface Labels {
   callStep3: string;
   callTrust: string;
   callButton: string;
-  dtmfAction: (number: string, code: string) => string;
+  dtmfAction: (number: string) => string;
   dtmfButton: string;
   waiting: string;
   expiresIn: (seconds: number) => string;
@@ -48,7 +48,7 @@ export const defaultLabels: Labels = {
   callStep3: "Hang up. Done.",
   callTrust: "We only see your number — we don't pick up.",
   callButton: "Call now",
-  dtmfAction: (number, code) => `Call ${number} and enter ${code} on the keypad`,
+  dtmfAction: (number) => `Call ${number}, then enter this code on the keypad`,
   dtmfButton: "Call now",
   waiting: "Waiting for you. We detect it automatically.",
   expiresIn: (s) => `Expires in ${s}s`,
