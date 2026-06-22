@@ -45,3 +45,19 @@ jobs:
         run: go test -race ./...
       - name: build
         run: go build ./...
+
+  sdk-node:
+    name: Node SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk-server-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: sdk-server-node/package-lock.json
+      - run: npm ci
+      - run: npm test
