@@ -7,6 +7,13 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Embeddable Go engine** (`coordinator/engine`): add CallToVerify to your own Go backend with
+  no separate service. `New` / `StartVerification` / `Status` / `DeviceHandler` / `NewPairing`
+  (QR pairing). SQLite is the zero-infra default; Postgres via `PostgresDSN`.
+- `Store` is now an interface with **Postgres and SQLite** backends (pure-Go `modernc.org/sqlite`).
+- Shared `deviceapi` package for the device-facing routes (used by both the standalone
+  Coordinator and the embedded engine).
+- Runnable embedded example at `coordinator/examples/embedded`.
 - Initial public scaffold of the CallToVerify monorepo.
 - **Coordinator Phase 1**: full verification implementation.
   - pgx-backed persistence with an embedded, self-applying migration runner.

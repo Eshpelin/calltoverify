@@ -12,7 +12,7 @@ import (
 // Migrate applies any embedded migration files that have not yet run. Applied
 // versions are tracked in the schema_migrations table, so this is idempotent and
 // safe to call on every startup.
-func (s *Store) Migrate(ctx context.Context) error {
+func (s *pgStore) Migrate(ctx context.Context) error {
 	if _, err := s.pool.Exec(ctx,
 		`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
 	); err != nil {

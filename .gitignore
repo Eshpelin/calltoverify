@@ -47,3 +47,8 @@ venv/
 
 # --- Docker / data ---
 pgdata/
+
+# --- SQLite (embedded engine) ---
+*.db
+*.db-shm
+*.db-wal
