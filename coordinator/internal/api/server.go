@@ -1,7 +1,6 @@
-// Package api wires the Coordinator's HTTP surface across three audiences:
-//   - /admin/*    provisioning (apps, devices, numbers), guarded by an admin token
-//   - /v1/verif*  developer API (bearer API key)
-//   - /v1/devices/*, /v1/inbound  device API (HMAC-signed)
+// Package api wires the standalone Coordinator's HTTP surface across three
+// audiences: admin provisioning, the developer API, and the device API (the last
+// shared with the embedded engine via the deviceapi package).
 package api
 
 import (
@@ -11,6 +10,7 @@ import (
 
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/config"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/deviceapi"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/verify"
 )
@@ -18,20 +18,25 @@ import (
 type Server struct {
 	logger *slog.Logger
 	cfg    config.Config
-	store  *store.Store
+	store  store.Store
 	svc    *verify.Service
-	nonces *auth.NonceCache
+	device *deviceapi.Handler
 }
 
-func NewServer(logger *slog.Logger, cfg config.Config, st *store.Store, svc *verify.Service, nonces *auth.NonceCache) *Server {
-	return &Server{logger: logger, cfg: cfg, store: st, svc: svc, nonces: nonces}
+func NewServer(logger *slog.Logger, cfg config.Config, st store.Store, svc *verify.Service, nonces *auth.NonceCache) *Server {
+	return &Server{
+		logger: logger,
+		cfg:    cfg,
+		store:  st,
+		svc:    svc,
+		device: deviceapi.New(st, svc, nonces, logger),
+	}
 }
 
 // Routes returns the fully wired HTTP handler.
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
-	// Operational.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -46,10 +51,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /v1/verifications", s.devAuth(s.handleStartVerification))
 	mux.HandleFunc("GET /v1/verifications/{id}", s.devAuth(s.handleGetVerification))
 
-	// Device API.
-	mux.HandleFunc("POST /v1/devices/register", s.deviceAuth(s.handleDeviceRegister))
-	mux.HandleFunc("POST /v1/devices/heartbeat", s.deviceAuth(s.handleDeviceHeartbeat))
-	mux.HandleFunc("POST /v1/inbound", s.deviceAuth(s.handleInbound))
+	// Device API (shared handlers from deviceapi).
+	mux.HandleFunc("POST /v1/devices/register", s.device.Auth(s.device.Register))
+	mux.HandleFunc("POST /v1/devices/heartbeat", s.device.Auth(s.device.Heartbeat))
+	mux.HandleFunc("POST /v1/inbound", s.device.Auth(s.device.Inbound))
 
 	return withLogging(s.logger, mux)
 }

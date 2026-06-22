@@ -37,14 +37,14 @@ type Limiter interface {
 }
 
 type Service struct {
-	store          *store.Store
+	store          store.Store
 	notifier       Notifier
 	limiter        Limiter
 	defaultCodeLen int
 	defaultTTL     time.Duration
 }
 
-func NewService(st *store.Store, n Notifier, l Limiter, codeLen int, ttl time.Duration) *Service {
+func NewService(st store.Store, n Notifier, l Limiter, codeLen int, ttl time.Duration) *Service {
 	return &Service{store: st, notifier: n, limiter: l, defaultCodeLen: codeLen, defaultTTL: ttl}
 }
 
@@ -139,7 +139,7 @@ func (s *Service) Start(ctx context.Context, app store.App, req StartRequest) (S
 			if err == nil {
 				break
 			}
-			if store.IsUniqueViolation(err) {
+			if errors.Is(err, store.ErrConflict) {
 				continue
 			}
 			return StartResult{}, err

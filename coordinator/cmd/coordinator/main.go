@@ -27,7 +27,7 @@ func main() {
 
 	rootCtx := context.Background()
 
-	st, err := store.New(rootCtx, cfg.DatabaseURL)
+	st, err := store.NewPostgres(rootCtx, cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("store init", "err", err)
 		os.Exit(1)
@@ -88,7 +88,7 @@ func main() {
 
 // waitForDB retries the initial connection so the Coordinator can start alongside
 // Postgres (for example under docker compose) before it is ready.
-func waitForDB(ctx context.Context, st *store.Store, logger *slog.Logger) error {
+func waitForDB(ctx context.Context, st store.Store, logger *slog.Logger) error {
 	var err error
 	for i := 0; i < 30; i++ {
 		if err = st.Ping(ctx); err == nil {
@@ -100,7 +100,7 @@ func waitForDB(ctx context.Context, st *store.Store, logger *slog.Logger) error 
 	return err
 }
 
-func expireLoop(ctx context.Context, st *store.Store, logger *slog.Logger) {
+func expireLoop(ctx context.Context, st store.Store, logger *slog.Logger) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for {

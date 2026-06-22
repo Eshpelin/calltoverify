@@ -7,6 +7,38 @@ matching, abuse blocking, and developer webhooks. Written in Go with Postgres fo
 > channels, provisioning, auth, and signed webhooks. Rate limiting and the replay-nonce cache
 > are in-process for now (Redis-backed versions come in Phase 4 for horizontal scale).
 
+## Two ways to use it
+
+- **Embedded** (`engine` package): import into your own Go backend, mount one handler, call
+  verification methods in-process. SQLite default = zero infrastructure. This is the simplest
+  path and is documented below.
+- **Standalone** (this `cmd/coordinator`): a multi-tenant HTTP service with admin/dev/device
+  REST APIs, for non-Go backends that talk to it via a language SDK. Documented further down.
+
+## Embedded engine (Go)
+
+```go
+import ctv "github.com/Eshpelin/calltoverify/coordinator/engine"
+
+eng, err := ctv.New(ctx, ctv.Options{
+    // SQLitePath defaults to "calltoverify.db"; set PostgresDSN to use Postgres instead.
+    OnVerified: func(ev ctv.Event) { /* mark the user verified */ },
+})
+defer eng.Close()
+
+mux.Handle("/ctv/", eng.DeviceHandler("/ctv"))            // receiver app posts here
+
+p, _ := eng.NewPairing(ctx, ctv.PairingParams{           // enroll a phone; show p.QRPayload as a QR
+    Endpoint: "https://app.example.com/ctv",
+    Name: "front-desk phone", MSISDN: "+8801700000001", Channels: []string{"sms"},
+})
+
+v, _ := eng.StartVerification(ctx, ctv.Params{Channel: "sms"})  // v.Instructions -> show to user
+st, _ := eng.Status(ctx, v.SessionID)                          // or rely on OnVerified
+```
+
+Runnable: [`examples/embedded`](examples/embedded).
+
 ## Run
 
 ```bash

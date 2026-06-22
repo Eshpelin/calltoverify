@@ -45,7 +45,7 @@ func testServer(t *testing.T) (*httptest.Server, *fakeNotifier) {
 		t.Skip("set CTV_TEST_DATABASE_URL to run Coordinator integration tests")
 	}
 	ctx := context.Background()
-	st, err := store.New(ctx, dsn)
+	st, err := store.NewPostgres(ctx, dsn)
 	if err != nil {
 		t.Fatalf("store: %v", err)
 	}

@@ -77,20 +77,38 @@ be **derived** from the sender, or **claimed** up front and matched. See
 | [`sdk-client-flutter/`](sdk-client-flutter) | Mobile client SDK | Flutter |
 | [`docs/`](docs) | Documentation | — |
 
-## Quick start (self-host)
+## Quick start
 
-> Requires Docker.
+### Embed it in your Go backend (no separate service, no database to run)
+
+```go
+import ctv "github.com/Eshpelin/calltoverify/coordinator/engine"
+
+eng, _ := ctv.New(ctx, ctv.Options{
+    OnVerified: func(ev ctv.Event) { /* mark the user verified */ },
+})
+mux.Handle("/ctv/", eng.DeviceHandler("/ctv")) // the receiver app posts here
+
+// in your signup handler:
+v, _ := eng.StartVerification(ctx, ctv.Params{Channel: "sms"})
+// show v.Instructions to the user; poll eng.Status or use OnVerified
+```
+
+SQLite is the default, so there is nothing else to run. Enroll a spare phone with
+`eng.NewPairing(...)`, which returns a QR payload the Android app scans. A runnable example
+lives in [`coordinator/examples/embedded`](coordinator/examples/embedded).
+
+### Or run the standalone Coordinator (for non-Go backends)
 
 ```bash
 git clone https://github.com/Eshpelin/calltoverify.git
 cd calltoverify
 docker compose up --build
-# Coordinator health check:
 curl http://localhost:8080/healthz
 ```
 
-Postgres and Redis come up alongside the Coordinator, and the schema migrations run
-automatically on first boot. Full guide: [`docs/getting-started.md`](docs/getting-started.md).
+Then use a backend SDK ([Node](sdk-server-node), [Python](sdk-server-python)) against its REST
+API. Full guide: [`docs/getting-started.md`](docs/getting-started.md).
 
 ## Project status
 
