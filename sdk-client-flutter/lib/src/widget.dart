@@ -26,6 +26,9 @@ class CallToVerify extends StatefulWidget {
 
   final StartFn start;
   final StatusFn status;
+
+  /// Channels in priority order: the first is the primary (shown first), the rest
+  /// are alternatives. With more than one, a chooser is shown first.
   final List<Channel> channels;
   final void Function(String? verifiedMsisdn)? onVerified;
   final VoidCallback? onExpired;

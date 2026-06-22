@@ -63,7 +63,7 @@ automatic.
 
 | Prop | Type | |
 |---|---|---|
-| `channels` | `("sms"\|"call"\|"dtmf")[]` | channels to offer (chooser shown if > 1) |
+| `channels` | `("sms"\|"call"\|"dtmf")[]` | channels in priority order — first is the primary, rest are alternatives (chooser shown if > 1) |
 | `start` | `(channel?) => Promise<StartResult>` | start a verification via your backend |
 | `status` | `(sessionId) => Promise<StatusResult>` | poll status via your backend |
 | `onVerified` | `(msisdn?) => void` | called on success |
