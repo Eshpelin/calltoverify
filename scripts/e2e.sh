@@ -14,12 +14,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 export PYTHONPATH="$ROOT/receiver-pi"
-API="http://localhost:8080"
+PORT="${CTV_E2E_PORT:-8080}"
+API="http://localhost:$PORT"
 
 echo "building embedded example..."
 ( cd "$ROOT/coordinator" && go build -o "$TMP/embedded" ./examples/embedded )
 
-( cd "$TMP" && ./embedded >"$TMP/server.log" 2>&1 & echo $! > "$TMP/pid" )
+( cd "$TMP" && CTV_EXAMPLE_ADDR=":$PORT" ./embedded >"$TMP/server.log" 2>&1 & echo $! > "$TMP/pid" )
 SVPID="$(cat "$TMP/pid")"
 cleanup() { kill "$SVPID" 2>/dev/null || true; rm -rf "$TMP"; }
 trap cleanup EXIT

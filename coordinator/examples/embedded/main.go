@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	ctv "github.com/Eshpelin/calltoverify/coordinator/engine"
@@ -22,6 +23,18 @@ import (
 
 func main() {
 	ctx := context.Background()
+
+	// Address to listen on (default :8080). Overridable so multiple instances
+	// (or CI's e2e) can run without colliding on a fixed port.
+	addr := os.Getenv("CTV_EXAMPLE_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+	// The public base URL the receiver app reaches; defaults to the listen addr.
+	baseURL := os.Getenv("CTV_EXAMPLE_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost" + addr
+	}
 
 	eng, err := ctv.New(ctx, ctv.Options{
 		SQLitePath: "calltoverify.db",
@@ -42,7 +55,7 @@ func main() {
 	// Admin-only in a real app: enroll a phone and return the QR payload to scan.
 	mux.HandleFunc("GET /pair", func(w http.ResponseWriter, r *http.Request) {
 		p, err := eng.NewPairing(ctx, ctv.PairingParams{
-			Endpoint: "http://localhost:8080/ctv",
+			Endpoint: baseURL + "/ctv",
 			Name:     r.URL.Query().Get("name"),
 			MSISDN:   r.URL.Query().Get("msisdn"),
 			Channels: strings.Split(r.URL.Query().Get("channels"), ","),
@@ -77,8 +90,8 @@ func main() {
 		writeJSON(w, st)
 	})
 
-	log.Println("embedded CallToVerify example listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Printf("embedded CallToVerify example listening on %s", addr)
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
