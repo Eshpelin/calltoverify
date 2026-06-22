@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        Window-level theme only. The in-app UI is Jetpack Compose and themed by
+        CallToVerifyTheme (see ui/Theme.kt); this style just dresses the window
+        before Compose draws and sets the system-bar colors.
+
+        We extend the framework's Material light theme so no AppCompat/Material
+        XML dependency is needed. A values-night variant supplies the dark window.
+    -->
+    <style name="Theme.CallToVerify" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/ctv_indigo</item>
+        <item name="android:colorPrimaryDark">@color/ctv_indigo_dark</item>
+        <item name="android:colorAccent">@color/ctv_indigo</item>
+        <item name="android:windowBackground">@color/ctv_background_light</item>
+        <item name="android:statusBarColor">@color/ctv_indigo</item>
+        <item name="android:navigationBarColor">@color/ctv_background_light</item>
+    </style>
+</resources>
