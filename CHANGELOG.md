@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Ecosystem clients**: backend SDKs for Node/TypeScript, Python, and PHP (Laravel-friendly);
+  front-end for the web widget, React, and Flutter; receivers for Android (Kotlin) and Raspberry
+  Pi (Python, with gammu + Asterisk). All share one HMAC device protocol, pinned by cross-language
+  known-answer vectors.
+- **Self-hosted console** (`coordinator/examples/dashboard`): a guided onboarding wizard (served at
+  `/` and `/setup`) — pair a phone via QR, run a test verification — plus a live ops dashboard of
+  receivers and recent verifications. Plus a non-Go `examples/node-web` (Node SDK + browser UI).
+- **Per-SIM voice queueing**: at most one pending call/DTMF verification per number (SMS
+  multiplexes), made atomic by a partial unique index; all-busy returns a `BusyError` with a queue
+  position.
+- **Abuse auto-block**: senders that brute-force codes or flood inbound are auto-blocked for an
+  hour.
+- **Redis-backed rate-limit + replay-nonce** (`CTV_REDIS_URL`) for sharing limits across instances;
+  falls back to in-process.
 - **Embeddable Go engine** (`coordinator/engine`): add CallToVerify to your own Go backend with
   no separate service. `New` / `StartVerification` / `Status` / `DeviceHandler` / `NewPairing`
   (QR pairing). SQLite is the zero-infra default; Postgres via `PostgresDSN`.
