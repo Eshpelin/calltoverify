@@ -1,0 +1,45 @@
+{
+  "name": "@calltoverify/widget",
+  "version": "0.1.0",
+  "description": "Embeddable web widget for CallToVerify phone number verification.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./controller": {
+      "types": "./dist/controller.d.ts",
+      "import": "./dist/controller.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node --test"
+  },
+  "keywords": [
+    "otp",
+    "phone-verification",
+    "widget",
+    "calltoverify"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eshpelin/calltoverify.git",
+    "directory": "widget-web"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
