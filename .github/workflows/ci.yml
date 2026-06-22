@@ -15,12 +15,28 @@ jobs:
     defaults:
       run:
         working-directory: coordinator
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ctv
+          POSTGRES_PASSWORD: ctv
+          POSTGRES_DB: ctv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ctv -d ctv_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CTV_TEST_DATABASE_URL: postgres://ctv:ctv@localhost:5432/ctv_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: false
+          cache-dependency-path: coordinator/go.sum
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && echo 'run gofmt' && exit 1)
       - name: vet

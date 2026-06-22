@@ -1,6 +1,7 @@
 # CallToVerify — local self-host stack.
-# Brings up the Coordinator with Postgres and Redis. Schema migrations in
-# coordinator/migrations are applied automatically on first Postgres boot.
+# Brings up the Coordinator with Postgres and Redis. The Coordinator applies its
+# own schema migrations on startup (tracked in schema_migrations), so the database
+# starts empty.
 #
 #   docker compose up --build
 #   curl http://localhost:8080/healthz
@@ -16,7 +17,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./coordinator/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U calltoverify"]
       interval: 5s
@@ -40,6 +40,8 @@ services:
       CTV_DATABASE_URL: "postgres://calltoverify:calltoverify@postgres:5432/calltoverify?sslmode=disable"
       CTV_REDIS_URL: "redis://redis:6379"
       CTV_ENV: "development"
+      # Set a strong token to enable the /admin provisioning API. Leave empty to disable it.
+      CTV_ADMIN_TOKEN: "dev-admin-change-me"
     ports:
       - "8080:8080"
 
