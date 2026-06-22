@@ -134,3 +134,17 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m unittest discover -s tests -t .
+
+  sdk-flutter:
+    name: Flutter SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk-client-flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter test

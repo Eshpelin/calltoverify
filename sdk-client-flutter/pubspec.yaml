@@ -1,0 +1,20 @@
+name: calltoverify
+description: Flutter client for CallToVerify free, self-hosted phone number verification.
+version: 0.1.0
+homepage: https://github.com/Eshpelin/calltoverify
+repository: https://github.com/Eshpelin/calltoverify
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
