@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CallToVerify — Console</title>
+<style>
+  :root{
+    --brand:#4f46e5;--brand-strong:#4338ca;--ink:#17172b;--muted:#6b6b82;
+    --surface:#f4f4fb;--bg:#ffffff;--border:rgba(23,23,43,.10);--success:#15a34a;
+    --amber:#b45309;--radius:16px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#fafafe;color:var(--ink);font-family:var(--font);line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 22px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo .mark{width:34px;height:34px;border-radius:9px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center}
+  .pill{font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+  .pill.ok{background:rgba(21,163,74,.12);color:var(--success)}
+  .pill.off{background:rgba(180,83,9,.12);color:var(--amber)}
+  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface);color:var(--brand-strong)}
+  .lead{color:var(--muted);margin:0 0 26px;font-size:14.5px}
+  h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:30px 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .step{font-size:12px;font-weight:700;color:var(--brand);margin-bottom:6px}
+  .card h3{margin:0 0 4px;font-size:16px;font-weight:700}
+  .card p{margin:0 0 14px;color:var(--muted);font-size:13px}
+  label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:10px 0 5px}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;background:#fff}
+  .chk{display:flex;gap:14px;margin-top:6px}
+  .chk label{display:flex;align-items:center;gap:6px;font-weight:500;color:var(--ink);margin:0;font-size:13px}
+  .chk input{width:auto}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .btn{background:var(--brand);color:#fff;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:600;width:100%;margin-top:14px}
+  .btn:hover{background:var(--brand-strong)}
+  .btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--border)}
+  canvas{display:block;margin:6px auto 10px;border-radius:10px}
+  .code{display:flex;gap:7px;justify-content:center;margin:6px 0 12px}
+  .digit{width:38px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--brand-strong);background:var(--surface);border-radius:9px}
+  .wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
+  .spinner{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--brand);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .done{text-align:center;padding:6px 0}
+  .done .ic{width:48px;height:48px;border-radius:50%;background:rgba(21,163,74,.12);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 8px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:0 12px 8px}
+  td{padding:11px 12px;border-top:1px solid var(--border)}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .muted{color:var(--muted)}
+  .empty{color:var(--muted);font-size:13px;padding:16px 12px}
+  .snippet{background:#15151f;color:#e7e7f2;border-radius:10px;padding:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;overflow:auto;white-space:pre}
+  .snippet .k{color:#a78bfa}.snippet .s{color:#7dd3a0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="mark">✓</span> CallToVerify</div>
+    <span class="tag">self-hosted console</span>
+  </header>
+  <p class="lead">Free phone verification. The user reaches out to a spare phone you control. Pair a receiver, run a test, and watch verifications land.</p>
+
+  <h2>Get started</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="step">STEP 1</div>
+      <h3>Pair a receiver</h3>
+      <p>Scan this QR with the CallToVerify Android app to connect a spare phone.</p>
+      <div id="pairForm">
+        <label>Phone label</label><input id="pName" value="Front desk phone" />
+        <label>SIM number (MSISDN)</label><input id="pMsisdn" value="+8801700000001" />
+        <label>Channels</label>
+        <div class="chk">
+          <label><input type="checkbox" value="sms" checked /> SMS</label>
+          <label><input type="checkbox" value="call" /> Missed call</label>
+          <label><input type="checkbox" value="dtmf" /> DTMF</label>
+        </div>
+        <button class="btn" onclick="pair()">Generate pairing QR</button>
+      </div>
+      <div id="pairResult" style="display:none">
+        <canvas id="qr" width="180" height="180"></canvas>
+        <div class="wait" id="pairWait"><span class="spinner"></span> Waiting for the device to come online…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step">STEP 2</div>
+      <h3>Run a test</h3>
+      <p>Start a verification and complete it from a phone (or the receiver).</p>
+      <label>Channel</label>
+      <select id="tChannel"><option value="sms">SMS</option><option value="call">Missed call</option><option value="dtmf">DTMF</option></select>
+      <button class="btn" onclick="startTest()">Start verification</button>
+      <div id="testResult" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card">
+      <div class="step">STEP 3</div>
+      <h3>Integrate</h3>
+      <p>Embed the engine in your Go backend. That's the whole integration.</p>
+      <div class="snippet"><span class="k">eng</span>, _ := ctv.New(ctx, ctv.Options{
+  OnVerified: <span class="k">func</span>(ev ctv.Event) {
+    <span class="s">// mark the user verified</span>
+  },
+})
+mux.Handle(<span class="s">"/ctv/"</span>, eng.DeviceHandler(<span class="s">"/ctv"</span>))
+v, _ := eng.StartVerification(ctx,
+  ctv.Params{Channel: <span class="s">"sms"</span>})</div>
+    </div>
+  </div>
+
+  <h2>Receivers</h2>
+  <div class="card" style="padding:8px 8px 4px">
+    <table><thead><tr><th>Name</th><th>Type</th><th>Numbers</th><th>Status</th><th>Last seen</th></tr></thead>
+    <tbody id="devices"><tr><td colspan="5" class="empty">No receivers paired yet.</td></tr></tbody></table>
+  </div>
+
+  <h2>Recent verifications</h2>
+  <div class="card" style="padding:8px 8px 4px">
+    <table><thead><tr><th>Channel</th><th>Status</th><th>Verified number</th><th>When</th></tr></thead>
+    <tbody id="sessions"><tr><td colspan="4" class="empty">No verifications yet.</td></tr></tbody></table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+const j = (r) => r.json();
+async function pair(){
+  const channels = [...document.querySelectorAll('#pairForm .chk input:checked')].map(c=>c.value);
+  const body = { Name: pName.value, MSISDN: pMsisdn.value, Channels: channels };
+  const res = await fetch('/api/pair',{method:'POST',body:JSON.stringify(body)}).then(j);
+  pairForm.style.display='none'; pairResult.style.display='block';
+  QRCode.toCanvas(document.getElementById('qr'), res.payload, {width:180,margin:1,color:{dark:'#17172b',light:'#ffffff'}});
+  const watch = setInterval(async()=>{
+    const devs = await fetch('/api/devices').then(j);
+    if(devs.some(d=>d.ID===res.device_id && d.Status==='online')){ clearInterval(watch);
+      pairWait.innerHTML='<span class="pill ok">● online</span> Receiver connected.'; }
+  },1500);
+}
+async function startTest(){
+  const v = await fetch('/api/start',{method:'POST',body:JSON.stringify({Channel:tChannel.value})}).then(j).catch(()=>null);
+  if(!v || !v.SessionID){ testResult.innerHTML='<p class="muted" style="margin:0">No online receiver for this channel. Pair one first.</p>'; return; }
+  const i = v.Instructions;
+  let html = `<p class="muted" style="margin:0 0 8px">${i.Action}</p>`;
+  if(i.Code){ html += `<div class="code">${i.Code.split('').map(d=>`<div class="digit">${d}</div>`).join('')}</div>`; }
+  html += `<div class="wait" id="tw"><span class="spinner"></span> Waiting for the inbound signal…</div>`;
+  testResult.innerHTML = html;
+  const watch = setInterval(async()=>{
+    const st = await fetch('/api/status?id='+v.SessionID).then(j);
+    if(st.Status==='verified'){ clearInterval(watch);
+      testResult.innerHTML=`<div class="done"><div class="ic">✓</div><div style="font-weight:700">Verified</div><div class="mono muted">${st.VerifiedMSISDN}</div></div>`; }
+    else if(st.Status==='expired'){ clearInterval(watch); document.getElementById('tw').innerHTML='Expired. Try again.'; }
+  },2000);
+}
+function ago(ts){ const s=Math.max(0,(Date.now()-Date.parse(ts))/1000); if(s<60)return Math.floor(s)+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago'; return Math.floor(s/3600)+'h ago'; }
+async function refresh(){
+  const devs = await fetch('/api/devices').then(j).catch(()=>[]);
+  document.getElementById('devices').innerHTML = devs.length ? devs.map(d=>`<tr>
+    <td>${d.Name}</td><td class="muted">${d.Type}</td><td class="mono">${(d.Numbers||[]).join(', ')||'—'}</td>
+    <td>${d.Status==='online'?'<span class="pill ok">● online</span>':'<span class="pill off">○ offline</span>'}</td>
+    <td class="muted">${d.LastHeartbeat?ago(d.LastHeartbeat):'never'}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="empty">No receivers paired yet.</td></tr>';
+  const ss = await fetch('/api/sessions').then(j).catch(()=>[]);
+  document.getElementById('sessions').innerHTML = ss.length ? ss.map(s=>`<tr>
+    <td>${s.Channel}</td>
+    <td>${s.Status==='verified'?'<span class="pill ok">verified</span>':'<span class="tag">'+s.Status+'</span>'}</td>
+    <td class="mono">${s.VerifiedMSISDN||'—'}</td><td class="muted">${ago(s.CreatedAt)}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">No verifications yet.</td></tr>';
+}
+refresh(); setInterval(refresh,3000);
+</script>
+</body>
+</html>

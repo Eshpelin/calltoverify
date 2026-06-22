@@ -95,8 +95,12 @@ v, _ := eng.StartVerification(ctx, ctv.Params{Channel: "sms"})
 ```
 
 SQLite is the default, so there is nothing else to run. Enroll a spare phone with
-`eng.NewPairing(...)`, which returns a QR payload the Android app scans. A runnable example
-lives in [`coordinator/examples/embedded`](coordinator/examples/embedded).
+`eng.NewPairing(...)`, which returns a QR payload the Android app scans.
+
+Two runnable examples: a minimal API in [`coordinator/examples/embedded`](coordinator/examples/embedded),
+and a full **self-hosted console** in [`coordinator/examples/dashboard`](coordinator/examples/dashboard)
+(`go run ./examples/dashboard`) — a guided wizard to pair a phone, run a test verification, and a
+live dashboard of receivers and recent verifications.
 
 ### Or run the standalone Coordinator (for non-Go backends)
 

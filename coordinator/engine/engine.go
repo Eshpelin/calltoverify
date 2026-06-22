@@ -231,6 +231,67 @@ func (e *Engine) Status(ctx context.Context, sessionID string) (Status, error) {
 	return out, nil
 }
 
+// DeviceInfo is a receiver's status for the ops dashboard.
+type DeviceInfo struct {
+	ID            string
+	Name          string
+	Type          string
+	Status        string
+	LastHeartbeat *time.Time
+	Capabilities  []string
+	Numbers       []string
+}
+
+// Devices lists enrolled receivers and their numbers.
+func (e *Engine) Devices(ctx context.Context) ([]DeviceInfo, error) {
+	devs, err := e.store.ListDevices(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]DeviceInfo, 0, len(devs))
+	for _, d := range devs {
+		nums, _ := e.store.ListNumbersByDevice(ctx, d.ID)
+		msisdns := make([]string, 0, len(nums))
+		for _, n := range nums {
+			msisdns = append(msisdns, n.MSISDN)
+		}
+		out = append(out, DeviceInfo{
+			ID: d.ID, Name: d.Name, Type: d.Type, Status: d.Status,
+			LastHeartbeat: d.LastHeartbeat, Capabilities: d.Capabilities, Numbers: msisdns,
+		})
+	}
+	return out, nil
+}
+
+// SessionInfo is a recent verification for the ops dashboard.
+type SessionInfo struct {
+	ID             string
+	Channel        string
+	Status         string
+	VerifiedMSISDN string
+	CreatedAt      time.Time
+}
+
+// Sessions returns the most recent verifications (newest first).
+func (e *Engine) Sessions(ctx context.Context, limit int) ([]SessionInfo, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	ss, err := e.store.ListRecentSessions(ctx, e.app.ID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SessionInfo, 0, len(ss))
+	for _, s := range ss {
+		v := ""
+		if s.VerifiedMSISDN != nil {
+			v = *s.VerifiedMSISDN
+		}
+		out = append(out, SessionInfo{ID: s.ID, Channel: s.Channel, Status: s.Status, VerifiedMSISDN: v, CreatedAt: s.CreatedAt})
+	}
+	return out, nil
+}
+
 // NewPairing enrolls a receiver and its number, returning a payload the app scans.
 func (e *Engine) NewPairing(ctx context.Context, p PairingParams) (Pairing, error) {
 	secret, err := auth.GenerateSecret()
