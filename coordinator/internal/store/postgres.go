@@ -268,6 +268,16 @@ func (s *pgStore) CreateInboundEvent(ctx context.Context, ev InboundEvent) error
 	return err
 }
 
+func (s *pgStore) CountInboundBySender(ctx context.Context, sender string, since time.Time, unmatchedOnly bool) (int, error) {
+	q := `SELECT count(*) FROM inbound_events WHERE sender = $1 AND received_at > $2`
+	if unmatchedOnly {
+		q += ` AND matched_session_id IS NULL`
+	}
+	var c int
+	err := s.pool.QueryRow(ctx, q, sender, since).Scan(&c)
+	return c, err
+}
+
 func (s *pgStore) IsBlocked(ctx context.Context, target string) (bool, error) {
 	var exists bool
 	err := s.pool.QueryRow(ctx,

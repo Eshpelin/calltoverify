@@ -63,6 +63,9 @@ type Store interface {
 	ExpireDue(ctx context.Context) (int64, error)
 
 	CreateInboundEvent(ctx context.Context, ev InboundEvent) error
+	// CountInboundBySender counts inbound events from a sender since a time. With
+	// unmatchedOnly, it counts only events that matched no session (failed attempts).
+	CountInboundBySender(ctx context.Context, sender string, since time.Time, unmatchedOnly bool) (int, error)
 	IsBlocked(ctx context.Context, target string) (bool, error)
 	CreateBlock(ctx context.Context, target, kind, reason string, until *time.Time) error
 }

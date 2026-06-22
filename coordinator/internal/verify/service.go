@@ -37,6 +37,18 @@ func (e *BusyError) Error() string {
 // ErrForbidden means the device tried to act on a number it does not own.
 var ErrForbidden = errors.New("device does not own this number")
 
+// Abuse thresholds: a sender is auto-blocked for an hour after too many failed
+// verification attempts (code/claim brute force) or too many inbound messages
+// (flooding) within a window. Blocked senders are short-circuited on the next
+// inbound, protecting the SIM and other users.
+const (
+	abuseFailWindow     = 10 * time.Minute
+	abuseFailThreshold  = 5
+	abuseFloodWindow    = 5 * time.Minute
+	abuseFloodThreshold = 20
+	abuseBlockDuration  = time.Hour
+)
+
 // Notifier is told when a session becomes verified (implemented by the webhook sender).
 type Notifier interface {
 	VerificationVerified(sess store.Session, app store.App)
@@ -239,6 +251,7 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 
 	sess, err := s.matchSession(ctx, num.ID, req)
 	if errors.Is(err, store.ErrNotFound) {
+		s.maybeBlock(ctx, req.Sender)
 		return InboundResult{Matched: false, Reason: "no_match"}, nil
 	}
 	if err != nil {
@@ -249,6 +262,7 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 	if sess.BindingMode == "claim" {
 		if sess.ClaimedMSISDN == nil || *sess.ClaimedMSISDN != req.Sender {
 			_ = s.store.IncrementAttempts(ctx, sess.ID)
+			s.maybeBlock(ctx, req.Sender)
 			return InboundResult{Matched: false, Reason: "claim_mismatch"}, nil
 		}
 	}
@@ -293,6 +307,21 @@ func (s *Service) matchSession(ctx context.Context, numberID string, req Inbound
 		return s.store.FindPendingByCode(ctx, numberID, code, "dtmf")
 	}
 	return s.store.FindPendingMissedCall(ctx, numberID, req.Sender)
+}
+
+// maybeBlock auto-blocks a sender that is brute-forcing codes or flooding inbound.
+// The current failing event has not been recorded yet, so the +1 accounts for it.
+func (s *Service) maybeBlock(ctx context.Context, sender string) {
+	now := time.Now()
+	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFailWindow), true); err == nil && n+1 >= abuseFailThreshold {
+		until := now.Add(abuseBlockDuration)
+		_ = s.store.CreateBlock(ctx, sender, "msisdn", "too many failed verification attempts", &until)
+		return
+	}
+	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFloodWindow), false); err == nil && n+1 >= abuseFloodThreshold {
+		until := now.Add(abuseBlockDuration)
+		_ = s.store.CreateBlock(ctx, sender, "msisdn", "too many inbound messages", &until)
+	}
 }
 
 func contains(ss []string, v string) bool {

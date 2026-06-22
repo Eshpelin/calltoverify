@@ -339,6 +339,16 @@ func (s *sqliteStore) CreateInboundEvent(ctx context.Context, ev InboundEvent) e
 	return err
 }
 
+func (s *sqliteStore) CountInboundBySender(ctx context.Context, sender string, since time.Time, unmatchedOnly bool) (int, error) {
+	q := `SELECT count(*) FROM inbound_events WHERE sender = ? AND received_at > ?`
+	if unmatchedOnly {
+		q += ` AND matched_session_id IS NULL`
+	}
+	var c int
+	err := s.db.QueryRowContext(ctx, q, sender, fmtTime(since)).Scan(&c)
+	return c, err
+}
+
 func (s *sqliteStore) IsBlocked(ctx context.Context, target string) (bool, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx,
