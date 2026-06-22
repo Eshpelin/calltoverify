@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -183,6 +184,52 @@ func TestStatusNotFound(t *testing.T) {
 	_, err := eng.Status(context.Background(), "nope")
 	if err != ErrNotFound {
 		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestVoiceConcurrencyOnePerSIM(t *testing.T) {
+	ctx := context.Background()
+	eng, ts, _ := newTestEngine(t)
+	pairing, err := eng.NewPairing(ctx, PairingParams{
+		Endpoint: ts.URL + "/ctv", Name: "phone", MSISDN: "+8801700000010", Channels: []string{"call"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deviceReq(t, ts, pairing, "/ctv/devices/heartbeat", map[string]any{})
+
+	// First voice verification occupies the SIM's single line.
+	if _, err := eng.StartVerification(ctx, Params{Channel: "call", BindingMode: "claim", ClaimedMSISDN: "+8801711111111"}); err != nil {
+		t.Fatalf("first voice start: %v", err)
+	}
+	// Second must report the line is busy (queued), not no-capacity.
+	_, err = eng.StartVerification(ctx, Params{Channel: "call", BindingMode: "claim", ClaimedMSISDN: "+8801722222222"})
+	var be *BusyError
+	if !errors.As(err, &be) {
+		t.Fatalf("want *BusyError, got %v", err)
+	}
+	if be.Position != 1 {
+		t.Fatalf("want position 1, got %d", be.Position)
+	}
+}
+
+func TestSMSNotSerialised(t *testing.T) {
+	ctx := context.Background()
+	eng, ts, _ := newTestEngine(t)
+	pairing, err := eng.NewPairing(ctx, PairingParams{
+		Endpoint: ts.URL + "/ctv", Name: "phone", MSISDN: "+8801700000011", Channels: []string{"sms"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deviceReq(t, ts, pairing, "/ctv/devices/heartbeat", map[string]any{})
+
+	// SMS multiplexes: many concurrent verifications on one number are fine.
+	if _, err := eng.StartVerification(ctx, Params{Channel: "sms"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := eng.StartVerification(ctx, Params{Channel: "sms"}); err != nil {
+		t.Fatalf("second sms should also start: %v", err)
 	}
 }
 

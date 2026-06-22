@@ -6,6 +6,7 @@ package verify
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,6 +23,16 @@ func (e *ValidationError) Error() string { return e.Field + ": " + e.Message }
 
 // ErrNoCapacity means no online number could serve the requested channel.
 var ErrNoCapacity = errors.New("no available number for channel")
+
+// BusyError means online voice numbers exist but all are mid-verification (a SIM
+// handles one voice call at a time). Position is how many voice lines are busy.
+type BusyError struct {
+	Position int
+}
+
+func (e *BusyError) Error() string {
+	return fmt.Sprintf("all voice lines are busy (%d in progress); retry shortly", e.Position)
+}
 
 // ErrForbidden means the device tried to act on a number it does not own.
 var ErrForbidden = errors.New("device does not own this number")
@@ -98,6 +109,12 @@ func (s *Service) Start(ctx context.Context, app store.App, req StartRequest) (S
 
 	num, err := s.store.PickNumber(ctx, channel)
 	if errors.Is(err, store.ErrNotFound) {
+		// For voice channels, distinguish "all lines busy" (queue) from "no capacity".
+		if channel == "call" || channel == "dtmf" {
+			if avail, _ := s.store.CountAvailableNumbers(ctx, channel); avail > 0 {
+				return StartResult{}, &BusyError{Position: avail}
+			}
+		}
 		return StartResult{}, ErrNoCapacity
 	}
 	if err != nil {

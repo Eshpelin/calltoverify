@@ -44,7 +44,14 @@ type Store interface {
 
 	CreateNumber(ctx context.Context, n Number) (Number, error)
 	GetNumberByMSISDN(ctx context.Context, msisdn string) (Number, error)
+	// PickNumber chooses an online, active number for the channel. For voice
+	// channels (call, dtmf) it excludes numbers that already have a pending voice
+	// session, enforcing one voice verification per SIM at a time.
 	PickNumber(ctx context.Context, channel string) (Number, error)
+	// CountAvailableNumbers counts online, active numbers that support the channel,
+	// ignoring whether they are currently busy. Used to tell "no capacity" apart
+	// from "all voice lines busy".
+	CountAvailableNumbers(ctx context.Context, channel string) (int, error)
 
 	CreateSession(ctx context.Context, s Session) (Session, error) // ErrConflict on code collision
 	GetSession(ctx context.Context, appID, id string) (Session, error)
@@ -71,3 +78,6 @@ func newID() string {
 }
 
 func nowUTC() time.Time { return time.Now().UTC() }
+
+// isVoiceChannel reports whether a channel occupies a SIM's single voice line.
+func isVoiceChannel(channel string) bool { return channel == "call" || channel == "dtmf" }

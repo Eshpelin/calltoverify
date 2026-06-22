@@ -29,9 +29,12 @@ func (s *Server) handleStartVerification(w http.ResponseWriter, r *http.Request)
 	})
 	if err != nil {
 		var ve *verify.ValidationError
+		var be *verify.BusyError
 		switch {
 		case errors.As(err, &ve):
 			writeErr(w, http.StatusBadRequest, "bad_request", ve.Error())
+		case errors.As(err, &be):
+			writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "busy", "detail": be.Error(), "position": be.Position})
 		case errors.Is(err, verify.ErrNoCapacity):
 			writeErr(w, http.StatusServiceUnavailable, "no_capacity", "no available number for this channel; try again shortly")
 		default:

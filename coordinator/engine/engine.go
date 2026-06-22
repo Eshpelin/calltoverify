@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -34,6 +35,16 @@ var ErrNoCapacity = errors.New("no available number for channel")
 
 // ErrNotFound means the verification does not exist.
 var ErrNotFound = errors.New("not found")
+
+// BusyError means all voice lines are mid-verification (one voice call per SIM).
+// Position is how many are in progress. Retry shortly.
+type BusyError struct {
+	Position int
+}
+
+func (e *BusyError) Error() string {
+	return fmt.Sprintf("all voice lines are busy (%d in progress); retry shortly", e.Position)
+}
 
 // Error is a client-fault error (for example, an invalid channel/binding combo).
 type Error struct {
@@ -192,9 +203,12 @@ func (e *Engine) StartVerification(ctx context.Context, p Params) (Result, error
 	})
 	if err != nil {
 		var ve *verify.ValidationError
+		var be *verify.BusyError
 		switch {
 		case errors.As(err, &ve):
 			return Result{}, &Error{Code: "invalid", Message: ve.Error()}
+		case errors.As(err, &be):
+			return Result{}, &BusyError{Position: be.Position}
 		case errors.Is(err, verify.ErrNoCapacity):
 			return Result{}, ErrNoCapacity
 		default:
