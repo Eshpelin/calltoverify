@@ -217,24 +217,39 @@ v, _ := eng.StartVerification(ctx, ctv.Params{Channel: <span class="s">"sms"</sp
 <span class="s">// show v.Instructions to the user; poll eng.Status(ctx, v.SessionID)</span></div>
       </div>
 
-      <h2>Any backend — REST API</h2>
+      <h2>Any backend — REST API, step by step</h2>
       <div class="card">
-        <p>Run the standalone Coordinator (<span class="mono">go run ./coordinator/cmd/coordinator</span>) and
-          call it from your server with your API key as a bearer token. Never call it from the browser.</p>
-        <div class="snippet"><span class="s"># 1. Start a verification</span>
-curl -X POST https://your-coordinator/v1/verifications \
-  -H <span class="s">"Authorization: Bearer $CTV_API_KEY"</span> \
-  -d '{"channel":"sms"}'
-<span class="s"># → { "session_id": "…", "instructions": {</span>
-<span class="s">#       "number":"+8801…", "code":"4729",</span>
-<span class="s">#       "action":"Text 4729 to +8801…", "deep_link":"sms:…",</span>
-<span class="s">#       "expires_at":"…" } }   — show these to the user</span>
+        <p>Run the standalone Coordinator, provision over its admin API to get a key, then call
+          <span class="mono">/v1</span> from your server (never the browser). Full end-to-end
+          walkthrough: <span class="mono">docs/getting-started.md</span>.</p>
+        <div class="snippet"><span class="s"># 1. Run the Coordinator (needs Postgres). The admin token you pick here unlocks
+#    provisioning — keep it secret. Listens on :8080 and auto-migrates.</span>
+export CTV_ADMIN_TOKEN=$(openssl rand -hex 24)
+export CTV_DATABASE_URL=postgres://calltoverify:calltoverify@localhost:5432/calltoverify?sslmode=disable
+go run ./coordinator/cmd/coordinator
 
-<span class="s"># 2. Poll status (or use a webhook, below)</span>
-curl https://your-coordinator/v1/verifications/$SESSION_ID \
-  -H <span class="s">"Authorization: Bearer $CTV_API_KEY"</span>
-<span class="s"># → { "session_id":"…", "status":"verified",</span>
-<span class="s">#     "verified_msisdn":"+8801712345678", … }</span></div>
+<span class="s"># 2. Create an app → THIS is where your API key comes from (shown once).</span>
+curl -X POST http://localhost:8080/admin/apps \
+  -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
+  -d '{"name":"my-app","webhook_url":"https://my-app.com/webhooks/ctv"}'
+<span class="s"># → { "app_id":"…", "api_key":"ctv_live_…", "webhook_secret":"whsec_…" }</span>
+
+<span class="s"># 3. Pair a receiver: register a device, then its SIM number.</span>
+curl -X POST http://localhost:8080/admin/devices -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
+  -d '{"app_id":"$APP_ID","name":"Front desk phone","type":"android","capabilities":["sms"]}'
+<span class="s"># → { "device_id":"…", "device_secret":"…" }   ← pair the phone/Pi with these</span>
+curl -X POST http://localhost:8080/admin/numbers -H <span class="s">"Authorization: Bearer $CTV_ADMIN_TOKEN"</span> \
+  -d '{"device_id":"$DEVICE_ID","msisdn":"+8801700000001","channels":["sms"]}'
+<span class="s"># Pair the device with { endpoint: http://localhost:8080/v1, device_id, device_secret }.</span>
+
+<span class="s"># 4. From your backend, start a verification with the API key.</span>
+curl -X POST http://localhost:8080/v1/verifications -H <span class="s">"Authorization: Bearer $API_KEY"</span> \
+  -d '{"channel":"sms"}'
+<span class="s"># → { "session_id":"…", "instructions":{ "number","code":"4729","action","deep_link","expires_at" } }</span>
+
+<span class="s"># 5. Get the result — poll, or use the webhook below.</span>
+curl http://localhost:8080/v1/verifications/$SESSION_ID -H <span class="s">"Authorization: Bearer $API_KEY"</span>
+<span class="s"># → { "status":"verified", "verified_msisdn":"+8801712345678", … }</span></div>
       </div>
 
       <h2>Webhooks — get told instead of polling</h2>
