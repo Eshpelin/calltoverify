@@ -1,0 +1,47 @@
+{
+  "name": "@calltoverify/react",
+  "version": "0.1.0",
+  "description": "React component for CallToVerify phone number verification.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node --test"
+  },
+  "keywords": [
+    "otp",
+    "phone-verification",
+    "react",
+    "calltoverify"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eshpelin/calltoverify.git",
+    "directory": "sdk-client-react"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.6.0"
+  }
+}
