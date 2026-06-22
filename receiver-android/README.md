@@ -27,7 +27,29 @@ Standard Gradle Android build (Kotlin DSL, Compose):
 ./gradlew :app:assembleRelease    # release APK (un-minified by default)
 ```
 
-Requires JDK 17 and the Android SDK (compileSdk 34, minSdk 24).
+Requires JDK 17+ and the Android SDK (compileSdk 34, minSdk 24). The Gradle wrapper is checked in.
+
+## Test it on an emulator
+
+You can run the whole flow without a SIM. Start a backend (e.g. `go run ./coordinator/examples/dashboard`),
+boot an emulator, then:
+
+```sh
+./gradlew :app:assembleDebug
+adb install -r -g app/build/outputs/apk/debug/app-debug.apk
+
+# Pair without a camera. The pairing JSON is what the dashboard QR encodes; use the
+# host alias 10.0.2.2 so the emulator can reach your machine:
+adb shell am start -n org.calltoverify.receiver/.ui.MainActivity \
+  --es ctv_pairing '{"endpoint":"http://10.0.2.2:8080/ctv","device_id":"...","device_secret":"..."}'
+
+# Start a verification in the dashboard, then deliver a fake inbound SMS with the code:
+adb emu sms send +8801712345678 918604
+```
+
+The app reports the SMS to the backend, which verifies it. (Cleartext HTTP is permitted only to
+`localhost` / `10.0.2.2` for this local testing — production traffic is HTTPS; see
+`res/xml/network_security_config.xml`.)
 
 ## Sideload only
 

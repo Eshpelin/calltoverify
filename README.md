@@ -293,7 +293,7 @@ the Python receiver client and verifies a number over HTTP.
 | [`sdk-client-react`](sdk-client-react) | React component | SSR tests (CI) |
 | [`sdk-client-flutter`](sdk-client-flutter) | Flutter client | `flutter test` (CI) |
 | [`receiver-pi`](receiver-pi) | Raspberry Pi receiver (SMS/missed-call/DTMF) | Client/signing unit-tested (CI) + E2E |
-| [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) | Reviewed; not compiled here (no Android SDK) |
+| [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) | Builds (Gradle); paired + SMS-verified on an Android emulator |
 
 Remaining roadmap: hardening (Play Integrity attestation, Redis-backed rate-limit/nonce for
 multi-instance deployments, hosted SaaS). Per-SIM voice queueing, an ops dashboard, the

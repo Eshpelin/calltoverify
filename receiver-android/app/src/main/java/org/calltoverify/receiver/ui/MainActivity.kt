@@ -1,6 +1,7 @@
 package org.calltoverify.receiver.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -58,6 +59,11 @@ class MainActivity : ComponentActivity() {
 
         cameraGranted.value = hasCameraPermission()
 
+        // Allow pairing without the camera (camera-less devices, automated tests):
+        //   adb shell am start -n org.calltoverify.receiver/.ui.MainActivity \
+        //     --es ctv_pairing '{"endpoint":"...","device_id":"...","device_secret":"..."}'
+        handlePairingIntent(intent)
+
         setContent {
             CallToVerifyTheme {
                 Surface(
@@ -81,6 +87,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePairingIntent(intent)
+    }
+
+    /** Pairs from an intent extra if present (camera-less / automated pairing). */
+    private fun handlePairingIntent(intent: Intent?) {
+        val payload = intent?.getStringExtra("ctv_pairing")?.takeIf { it.isNotBlank() } ?: return
+        if (repository.paired.value) return
+        onQrScanned(payload) { /* UI reflects the result via repository.paired */ }
     }
 
     override fun onResume() {
