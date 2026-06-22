@@ -1,6 +1,6 @@
 """Receiver configuration: endpoint + device credentials + the receiver's own
 MSISDN. Read from a JSON file (written by `ctv-pi pair`) with environment overrides
-(CTV_ENDPOINT, CTV_DEVICE_ID, CTV_DEVICE_SECRET, CTV_MSISDN, CTV_QUEUE)."""
+(CTV_ENDPOINT, CTV_DEVICE_ID, CTV_DEVICE_SECRET, CTV_MSISDN, CTV_QUEUE, CTV_DTMF_PROMPT)."""
 from __future__ import annotations
 
 import json
@@ -15,6 +15,10 @@ class Config:
     device_secret: str = ""
     msisdn: str = ""
     queue_path: str = ""
+    # Asterisk sound to play on a DTMF call before collecting digits. Default
+    # "beep"; set to a recorded prompt like "ctv-enter-pin" to voice-guide the
+    # caller (see contrib/make-dtmf-prompt.sh).
+    dtmf_prompt: str = "beep"
 
 
 def default_path() -> str:
@@ -37,6 +41,7 @@ def load(path: str | None = None) -> Config:
         ("device_secret", "CTV_DEVICE_SECRET"),
         ("msisdn", "CTV_MSISDN"),
         ("queue_path", "CTV_QUEUE"),
+        ("dtmf_prompt", "CTV_DTMF_PROMPT"),
     ):
         v = os.environ.get(env)
         if v:
