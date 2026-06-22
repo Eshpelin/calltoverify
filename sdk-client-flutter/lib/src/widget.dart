@@ -120,7 +120,7 @@ class _CallToVerifyState extends State<CallToVerify> {
   Widget _chooser() {
     final meta = <Channel, (IconData, String, String, bool)>{
       Channel.sms: (Icons.sms_outlined, 'Text us a code', 'Send one SMS', false),
-      Channel.call: (Icons.phone_outlined, 'Give a missed call', 'Totally free', true),
+      Channel.call: (Icons.phone_outlined, 'Give a missed call', 'Ring once and hang up', true),
       Channel.dtmf: (Icons.dialpad_outlined, 'Call and enter a code', 'Type it on the keypad', false),
     };
     return Column(
@@ -129,7 +129,7 @@ class _CallToVerifyState extends State<CallToVerify> {
       children: [
         const Text('Verify your number', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        const Text("We won't text you a code. You reach out instead. It's free and instant.",
+        const Text("We don't send you a code. You contact us from your number instead, and we verify it.",
             style: TextStyle(fontSize: 13.5, color: _muted)),
         const SizedBox(height: 18),
         for (final ch in widget.channels)
