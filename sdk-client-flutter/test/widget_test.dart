@@ -18,7 +18,7 @@ void main() {
     expect(find.text('Verify your number'), findsOneWidget);
     expect(find.text('Text us a code'), findsOneWidget);
     expect(find.text('Give a missed call'), findsOneWidget);
-    expect(find.text('Totally free'), findsOneWidget);
+    expect(find.text('Ring once and hang up'), findsOneWidget);
   });
 
   testWidgets('a single channel auto-starts into the SMS instruction', (tester) async {

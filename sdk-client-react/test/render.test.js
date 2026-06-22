@@ -14,7 +14,7 @@ test("renders the chooser for multiple channels", () => {
   assert.match(html, /Verify your number/);
   assert.match(html, /Text us a code/);
   assert.match(html, /Give a missed call/);
-  assert.match(html, /Totally free/);
+  assert.match(html, /Ring once and hang up/);
 });
 
 test("renders the starting state for a single channel", () => {
