@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a problem in the Coordinator, a receiver, an SDK, or the widget.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - coordinator
+        - receiver-android
+        - receiver-pi
+        - sdk-server-node
+        - sdk-server-php
+        - sdk-server-python
+        - widget-web
+        - sdk-client-flutter
+        - docs
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Version/commit, OS, Go/Node/Python version, device model, carrier (if relevant).
+    validations:
+      required: false

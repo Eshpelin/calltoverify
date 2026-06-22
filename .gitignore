@@ -1,0 +1,49 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# --- Secrets / local env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Go (coordinator) ---
+/coordinator/bin/
+/coordinator/coordinator
+*.test
+*.out
+coverage.txt
+
+# --- Node (widget-web, sdk-server-node, sdk-client-flutter tooling) ---
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- Python (receiver-pi, sdk-server-python) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# --- PHP (sdk-server-php) ---
+/sdk-server-php/vendor/
+
+# --- Android (receiver-android) ---
+*.apk
+*.aab
+.gradle/
+/receiver-android/local.properties
+
+# --- Docker / data ---
+pgdata/
