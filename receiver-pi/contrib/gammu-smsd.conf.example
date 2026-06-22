@@ -1,0 +1,21 @@
+# Example gammu-smsd config for the CallToVerify SMS channel.
+# Install gammu + gammu-smsd, set your modem's device/connection, then point
+# RunOnReceive at ctv-pi. gammu-smsd exports SMS_1_NUMBER and SMS_1_TEXT, which
+# `ctv-pi on-sms` reads.
+#
+#   sudo apt install gammu gammu-smsd
+#   sudo systemctl enable --now gammu-smsd
+
+[gammu]
+device = /dev/ttyUSB0
+connection = at
+
+[smsd]
+service = files
+inboxpath = /var/spool/gammu/inbox/
+outboxpath = /var/spool/gammu/outbox/
+sentsmspath = /var/spool/gammu/sent/
+errorsmspath = /var/spool/gammu/error/
+RunOnReceive = ctv-pi on-sms
+logfile = /var/log/gammu-smsd.log
+debuglevel = 0

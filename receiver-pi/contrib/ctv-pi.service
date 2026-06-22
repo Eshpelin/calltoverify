@@ -1,0 +1,13 @@
+[Unit]
+Description=CallToVerify Pi receiver (heartbeat + retry)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ctv-pi run --interval 60
+Restart=always
+RestartSec=5
+User=calltoverify
+
+[Install]
+WantedBy=multi-user.target
