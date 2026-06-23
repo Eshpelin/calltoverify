@@ -31,6 +31,40 @@ func seedSmsNumber(t *testing.T, st store.Store, msisdn string) store.Device {
 	return dev
 }
 
+// panicNotifier panics on notification, modelling a user OnVerified callback that
+// throws. The verification has already committed, so Inbound must still succeed.
+type panicNotifier struct{}
+
+func (panicNotifier) VerificationVerified(store.Session, store.App) { panic("boom in OnVerified") }
+
+func TestNotifierPanicDoesNotBreakVerification(t *testing.T) {
+	for name, open := range verifyBackends(t) {
+		t.Run(name, func(t *testing.T) {
+			st := open(t)
+			ctx := context.Background()
+			dev := seedSmsNumber(t, st, "+8801700000021")
+			app, err := st.GetAppByID(ctx, dev.AppID)
+			if err != nil {
+				t.Fatalf("GetAppByID: %v", err)
+			}
+			svc := NewService(st, panicNotifier{}, ratelimit.New(60, 10), 6, time.Minute, nil)
+			res, err := svc.Start(ctx, app, StartRequest{Channel: "sms"})
+			if err != nil {
+				t.Fatalf("Start: %v", err)
+			}
+			in, err := svc.Inbound(ctx, dev, InboundRequest{
+				Number: "+8801700000021", Type: "sms", Sender: "+8801712345678", Body: res.Instructions.Code,
+			})
+			if err != nil {
+				t.Fatalf("Inbound returned error (panic not recovered): %v", err)
+			}
+			if !in.Matched {
+				t.Fatalf("expected Matched=true despite notifier panic, got %+v", in)
+			}
+		})
+	}
+}
+
 // TestInboundThrottledDespiteSenderRotation is the regression test for the
 // throttle-bypass finding: the per-sender limiter and auto-block are keyed on the
 // device-supplied `sender`, so a compromised device that rotates it evades them.

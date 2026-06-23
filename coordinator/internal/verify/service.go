@@ -310,9 +310,21 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 	sess.Status = "verified"
 	sess.VerifiedMSISDN = &verified
 	if app, err := s.store.GetAppByID(ctx, sess.AppID); err == nil {
-		s.notifier.VerificationVerified(sess, app)
+		s.notify(sess, app)
 	}
 	return InboundResult{Matched: true, SessionID: sess.ID}, nil
+}
+
+// notify dispatches the verified event, isolating a panicking Notifier (for
+// example a user-supplied OnVerified callback in the embedded engine) from the
+// verification path: the verification has already committed and must succeed.
+func (s *Service) notify(sess store.Session, app store.App) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("notifier panicked", "recover", r, "session", sess.ID)
+		}
+	}()
+	s.notifier.VerificationVerified(sess, app)
 }
 
 // matchSession resolves the live session an inbound signal targets:
