@@ -118,8 +118,11 @@ export class CallToVerify {
   /**
    * Verify and parse a webhook. Pass the raw request body (string or Buffer) and
    * the X-CTV-Signature header. Throws CallToVerifyError on signature mismatch.
+   *
+   * Pass maxAgeSeconds to also reject events whose `ts` is outside that window
+   * (replay defense). Still de-dupe on sessionId in your handler for idempotency.
    */
-  verifyWebhook(rawBody: string | Buffer, signature: string): WebhookEvent {
+  verifyWebhook(rawBody: string | Buffer, signature: string, maxAgeSeconds?: number): WebhookEvent {
     if (!this.#webhookSecret) throw new Error("CallToVerify: webhookSecret is required to verify webhooks");
     const expected = createHmac("sha256", this.#webhookSecret).update(rawBody).digest("hex");
     const ok =
@@ -127,6 +130,12 @@ export class CallToVerify {
       timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
     if (!ok) throw new CallToVerifyError(401, "invalid_signature", "webhook signature mismatch");
     const p = JSON.parse(typeof rawBody === "string" ? rawBody : rawBody.toString("utf8"));
+    if (maxAgeSeconds !== undefined) {
+      const ts = Date.parse(p.ts);
+      if (Number.isNaN(ts) || Math.abs(Date.now() - ts) > maxAgeSeconds * 1000) {
+        throw new CallToVerifyError(401, "webhook_expired", "webhook timestamp outside the allowed window");
+      }
+    }
     return {
       event: p.event,
       sessionId: p.session_id,

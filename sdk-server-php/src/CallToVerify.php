@@ -90,7 +90,7 @@ final class CallToVerify
      *
      * @throws CallToVerifyException on signature mismatch.
      */
-    public function verifyWebhook(string $rawBody, string $signature): WebhookEvent
+    public function verifyWebhook(string $rawBody, string $signature, ?int $maxAgeSeconds = null): WebhookEvent
     {
         if ($this->webhookSecret === null || $this->webhookSecret === '') {
             throw new InvalidArgumentException('CallToVerify: webhookSecret is required to verify webhooks');
@@ -103,6 +103,15 @@ final class CallToVerify
 
         /** @var array<string, mixed> $payload */
         $payload = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
+
+        // Optional replay defense: reject events whose ts is outside the window.
+        // De-dupe on session_id for idempotency regardless.
+        if ($maxAgeSeconds !== null) {
+            $ts = isset($payload['ts']) ? strtotime((string) $payload['ts']) : false;
+            if ($ts === false || abs(time() - $ts) > $maxAgeSeconds) {
+                throw new CallToVerifyException(401, 'webhook_expired', 'webhook timestamp outside the allowed window');
+            }
+        }
 
         return WebhookEvent::fromArray($payload);
     }
