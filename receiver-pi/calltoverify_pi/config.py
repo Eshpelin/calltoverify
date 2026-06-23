@@ -54,6 +54,17 @@ def load(path: str | None = None) -> Config:
 
 def save(cfg: Config, path: str | None = None) -> None:
     p = path or default_path()
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    with open(p, "w", encoding="utf-8") as fh:
+    d = os.path.dirname(p)
+    os.makedirs(d, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)  # makedirs mode is umask-masked; enforce owner-only
+    except OSError:
+        pass
+    # The file holds device_secret in cleartext, so keep it owner-readable only.
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(asdict(cfg), fh, indent=2)
+    try:
+        os.chmod(p, 0o600)  # tighten if the file pre-existed with looser perms
+    except OSError:
+        pass
