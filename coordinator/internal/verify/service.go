@@ -256,7 +256,14 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 	if blocked, _ := s.store.IsBlocked(ctx, req.Sender); blocked {
 		return InboundResult{Matched: false, Reason: "blocked"}, nil
 	}
-	if !s.limiter.Allow("inbound:" + req.Sender) {
+	// Rate-limit on identities a device cannot spoof — the authenticated device and
+	// the resolved number — in addition to the self-reported sender. Without the
+	// device/number keys, a compromised device rotates the `sender` field to evade
+	// the per-sender limiter and auto-block, giving it an effectively unbounded
+	// inbound flood / code brute-force channel against the coordinator.
+	if !s.limiter.Allow("inbound-dev:"+device.ID) ||
+		!s.limiter.Allow("inbound-num:"+num.ID) ||
+		!s.limiter.Allow("inbound:"+req.Sender) {
 		return InboundResult{Matched: false, Reason: "rate_limited"}, nil
 	}
 
