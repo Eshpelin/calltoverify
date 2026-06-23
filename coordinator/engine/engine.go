@@ -64,6 +64,9 @@ type Options struct {
 	CodeLen     int            // verification code length (default 6)
 	TTL         time.Duration  // session lifetime (default 90s)
 	Logger      *slog.Logger   // optional; defaults to a no-op logger
+	// SecretKey, when set (32 bytes), enables AES-256-GCM encryption of
+	// device_secret and webhook_secret at rest. Plaintext stays readable.
+	SecretKey []byte
 }
 
 // Event is delivered to OnVerified when a number is verified.
@@ -164,6 +167,15 @@ func New(ctx context.Context, opts Options) (*Engine, error) {
 	if err := st.Migrate(ctx); err != nil {
 		st.Close()
 		return nil, err
+	}
+
+	if len(opts.SecretKey) > 0 {
+		enc, eerr := store.NewEncrypted(st, opts.SecretKey)
+		if eerr != nil {
+			st.Close()
+			return nil, eerr
+		}
+		st = enc
 	}
 
 	whSecret, err := auth.GenerateSecret()

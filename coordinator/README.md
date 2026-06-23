@@ -65,6 +65,11 @@ The Coordinator applies its own schema migrations on startup (tracked in `schema
 | `CTV_ADMIN_TOKEN` | _(empty)_ | Bearer token for `/admin/*`. Empty disables the admin API. |
 | `CTV_DEFAULT_CODE_LEN` | `6` | Default verification code length |
 | `CTV_DEFAULT_TTL_SECONDS` | `90` | Default session time-to-live |
+| `CTV_SECRET_KEY` | _(empty)_ | 32-byte key (hex or base64) enabling AES-256-GCM encryption of `device_secret`/`webhook_secret` at rest. Empty = plaintext; pre-existing plaintext stays readable after you set a key. |
+| `CTV_MAX_INFLIGHT` | `512` | Max concurrent in-flight HTTP requests; excess get `503`. `0` disables the cap. |
+| `CTV_INBOUND_RETENTION_DAYS` | `30` | How long `inbound_events` audit rows are kept before the sweep prunes them. |
+| `CTV_WEBHOOK_ALLOW_PRIVATE` | `false` | Allow webhooks to reach loopback/private IPs (SSRF guard off). Enable only for trusted internal webhook hosts. |
+| `CTV_REDIS_FAIL_CLOSED` | `false` | When Redis is unreachable, reject (preserve replay protection) instead of failing open to in-process nonces. |
 
 ## HTTP surface and auth
 
