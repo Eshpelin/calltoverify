@@ -20,6 +20,7 @@ class CallToVerify extends StatefulWidget {
     this.channels = const <Channel>[Channel.sms],
     this.onVerified,
     this.onExpired,
+    this.onError,
     this.onOpenLink,
     this.pollInterval = const Duration(milliseconds: 2500),
   });
@@ -32,6 +33,10 @@ class CallToVerify extends StatefulWidget {
   final List<Channel> channels;
   final void Function(String? verifiedMsisdn)? onVerified;
   final VoidCallback? onExpired;
+
+  /// Called when starting a verification fails, with the underlying error so the
+  /// host app can log it or show its own message.
+  final void Function(Object? error)? onError;
 
   /// Called with a `sms:`/`tel:` deep link when the user taps the primary action.
   /// Wire this to `url_launcher`'s `launchUrl` in your app.
@@ -48,6 +53,7 @@ class _CallToVerifyState extends State<CallToVerify> {
   Timer? _poll;
   Timer? _count;
   int _remaining = 0;
+  bool _polling = false; // true while a poll() is in flight, so polls don't stack
 
   @override
   void initState() {
@@ -66,7 +72,15 @@ class _CallToVerifyState extends State<CallToVerify> {
     _count = null;
     switch (_c.phase) {
       case VerificationPhase.instr:
-        _poll = Timer.periodic(widget.pollInterval, (_) => _c.poll());
+        _poll = Timer.periodic(widget.pollInterval, (_) async {
+          if (_polling) return; // don't stack overlapping polls
+          _polling = true;
+          try {
+            await _c.poll();
+          } finally {
+            _polling = false;
+          }
+        });
         _count = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
         _tick();
         break;
@@ -75,6 +89,9 @@ class _CallToVerifyState extends State<CallToVerify> {
         break;
       case VerificationPhase.expired:
         widget.onExpired?.call();
+        break;
+      case VerificationPhase.error:
+        widget.onError?.call(_c.lastError);
         break;
       default:
         break;
