@@ -54,15 +54,15 @@ func main() {
 	var nonces deviceapi.NonceStore = auth.NewNonceCache(10 * time.Minute)
 	if cfg.RedisURL != "" {
 		if rc, err := redisutil.Connect(rootCtx, cfg.RedisURL); err == nil {
-			limiter = ratelimit.NewRedis(rc, 60)
-			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute)
-			logger.Info("redis connected for rate-limit + nonce")
+			limiter = ratelimit.NewRedis(rc, 60, logger)
+			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute, cfg.RedisFailClosed, logger)
+			logger.Info("redis connected for rate-limit + nonce", "nonce_fail_closed", cfg.RedisFailClosed)
 		} else {
 			logger.Warn("redis unavailable; using in-process rate-limit + nonce", "err", err)
 		}
 	}
 
-	svc := verify.NewService(st, wh, limiter, cfg.DefaultCodeLen, cfg.DefaultTTL)
+	svc := verify.NewService(st, wh, limiter, cfg.DefaultCodeLen, cfg.DefaultTTL, logger)
 	server := api.NewServer(logger, cfg, st, svc, nonces)
 
 	if cfg.AdminToken == "" {

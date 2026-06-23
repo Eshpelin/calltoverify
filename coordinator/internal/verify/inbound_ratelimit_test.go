@@ -42,7 +42,7 @@ func TestInboundThrottledDespiteSenderRotation(t *testing.T) {
 			st := open(t)
 			dev := seedSmsNumber(t, st, "+8801700000020")
 			// Burst of 3 so the 4th+ inbound from this device/number is throttled.
-			svc := NewService(st, noopNotifier{}, ratelimit.New(60, 3), 6, time.Minute)
+			svc := NewService(st, noopNotifier{}, ratelimit.New(60, 3), 6, time.Minute, nil)
 
 			const n = 8
 			reasons := make([]string, n)

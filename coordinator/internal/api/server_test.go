@@ -57,7 +57,7 @@ func testServer(t *testing.T) (*httptest.Server, *fakeNotifier) {
 	}
 
 	notifier := &fakeNotifier{}
-	svc := verify.NewService(st, notifier, ratelimit.New(6000, 1000), 6, 90*time.Second)
+	svc := verify.NewService(st, notifier, ratelimit.New(6000, 1000), 6, 90*time.Second, nil)
 	cfg := config.Config{AdminToken: "test-admin", DefaultCodeLen: 6, DefaultTTL: 90 * time.Second}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	srv := NewServer(logger, cfg, st, svc, auth.NewNonceCache(time.Minute))
