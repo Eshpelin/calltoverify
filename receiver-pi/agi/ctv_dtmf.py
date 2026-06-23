@@ -13,6 +13,7 @@ import sys
 
 from calltoverify_pi.client import CtvClient
 from calltoverify_pi.config import load
+from calltoverify_pi.retry import RetryQueue
 
 
 def _read_agi_env():
@@ -58,7 +59,15 @@ def main():
                 cfg.msisdn, "call", caller, digits
             )
         except Exception as exc:  # noqa: BLE001
-            sys.stderr.write(f"ctv dtmf report failed: {exc}\n")
+            # Don't drop the entered code on a transient outage: enqueue it so the
+            # `ctv-pi run` daemon drains it later.
+            sys.stderr.write(f"ctv dtmf report failed; queued for retry: {exc}\n")
+            try:
+                RetryQueue(cfg.queue_path).add(
+                    {"number": cfg.msisdn, "type": "call", "sender": caller, "body": digits}
+                )
+            except Exception as qexc:  # noqa: BLE001
+                sys.stderr.write(f"ctv dtmf enqueue failed: {qexc}\n")
 
 
 if __name__ == "__main__":

@@ -90,7 +90,14 @@ class CtvClient:
             "X-CTV-Signature": sign(self.device_secret, ts, nonce, body),
         }
         status, raw = self._transport.post(self.endpoint + path, headers, body)
-        data = json.loads(raw.decode()) if raw else {}
+        # A non-JSON body (e.g. an HTML error page from a proxy) must not mask the
+        # real HTTP status with a JSONDecodeError.
+        try:
+            data = json.loads(raw.decode()) if raw else {}
+        except (ValueError, UnicodeDecodeError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
         if status < 200 or status >= 300:
             raise CtvError(status, data.get("error", "error"), data.get("detail", "request failed"))
         return data

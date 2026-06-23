@@ -45,15 +45,21 @@ def cmd_run(args) -> int:
     cfg = load(args.config)
     client = _client(cfg)
     queue = RetryQueue(cfg.queue_path)
-    try:
-        client.register()
-    except CtvError as exc:
-        print(f"register failed: {exc}", file=sys.stderr)
+    registered = False
     while True:
-        try:
-            client.heartbeat()
-        except CtvError as exc:
-            print(f"heartbeat failed: {exc}", file=sys.stderr)
+        # Register lazily and keep retrying: a Pi that boots before its backend is
+        # reachable must still come online once the backend recovers.
+        if not registered:
+            try:
+                client.register()
+                registered = True
+            except CtvError as exc:
+                print(f"register failed (will retry): {exc}", file=sys.stderr)
+        if registered:
+            try:
+                client.heartbeat()
+            except CtvError as exc:
+                print(f"heartbeat failed: {exc}", file=sys.stderr)
         try:
             queue.flush(lambda it: client.inbound(it["number"], it["type"], it["sender"], it.get("body", "")))
         except Exception as exc:  # noqa: BLE001 - keep the daemon alive
