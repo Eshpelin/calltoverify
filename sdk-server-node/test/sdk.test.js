@@ -149,3 +149,37 @@ test("constructor validates required options", () => {
   assert.throws(() => new CallToVerify({ apiKey: "k" }));
   assert.throws(() => new CallToVerify({ baseUrl: "http://x" }));
 });
+
+test("request times out as a CallToVerifyError", async () => {
+  const server = await startServer(() => {
+    /* never responds, forcing the client-side timeout */
+  });
+  const ctv = new CallToVerify({ baseUrl: urlOf(server), apiKey: "k", timeoutMs: 50 });
+  await assert.rejects(
+    () => ctv.checkStatus("sess1"),
+    (e) => e instanceof CallToVerifyError && e.code === "timeout",
+  );
+  server.closeAllConnections?.();
+  server.close();
+});
+
+test("non-JSON error body surfaces as CallToVerifyError carrying the status", async () => {
+  const server = await startServer((req, res) => {
+    res.writeHead(502, { "content-type": "text/html" });
+    res.end("<html>bad gateway</html>");
+  });
+  const ctv = new CallToVerify({ baseUrl: urlOf(server), apiKey: "k" });
+  await assert.rejects(
+    () => ctv.checkStatus("sess1"),
+    (e) => e instanceof CallToVerifyError && e.status === 502,
+  );
+  server.close();
+});
+
+test("verifyWebhook fails closed (401) on a missing signature header", () => {
+  const ctv = new CallToVerify({ baseUrl: "http://unused", apiKey: "k", webhookSecret: "whsec_test" });
+  assert.throws(
+    () => ctv.verifyWebhook("{}", undefined),
+    (e) => e instanceof CallToVerifyError && e.status === 401,
+  );
+});

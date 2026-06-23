@@ -19,6 +19,8 @@ export interface CallToVerifyOptions {
   webhookSecret?: string;
   /** Override the fetch implementation (defaults to global fetch, Node >= 18). */
   fetch?: typeof fetch;
+  /** Per-request timeout in milliseconds (default 10000). */
+  timeoutMs?: number;
 }
 
 export interface StartVerificationParams {
@@ -76,6 +78,7 @@ export class CallToVerify {
   readonly #apiKey: string;
   readonly #webhookSecret?: string;
   readonly #fetch: typeof fetch;
+  readonly #timeoutMs: number;
 
   constructor(opts: CallToVerifyOptions) {
     if (!opts?.baseUrl) throw new Error("CallToVerify: baseUrl is required");
@@ -83,6 +86,7 @@ export class CallToVerify {
     this.#baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.#apiKey = opts.apiKey;
     this.#webhookSecret = opts.webhookSecret;
+    this.#timeoutMs = opts.timeoutMs ?? 10000;
     const f = opts.fetch ?? globalThis.fetch;
     if (!f) throw new Error("CallToVerify: no fetch available; pass opts.fetch (Node >= 18 has global fetch)");
     this.#fetch = f;
@@ -124,6 +128,11 @@ export class CallToVerify {
    */
   verifyWebhook(rawBody: string | Buffer, signature: string, maxAgeSeconds?: number): WebhookEvent {
     if (!this.#webhookSecret) throw new Error("CallToVerify: webhookSecret is required to verify webhooks");
+    // Fail closed (not TypeError) when the header is missing — Express returns
+    // `string | string[] | undefined` for headers.
+    if (typeof signature !== "string" || signature.length === 0) {
+      throw new CallToVerifyError(401, "invalid_signature", "missing webhook signature");
+    }
     const expected = createHmac("sha256", this.#webhookSecret).update(rawBody).digest("hex");
     const ok =
       signature.length === expected.length &&
@@ -136,26 +145,47 @@ export class CallToVerify {
         throw new CallToVerifyError(401, "webhook_expired", "webhook timestamp outside the allowed window");
       }
     }
+    // Coerce missing fields to "" (matches the Python/PHP SDKs) rather than
+    // returning `undefined` typed as `string`.
     return {
-      event: p.event,
-      sessionId: p.session_id,
-      verifiedMsisdn: p.verified_msisdn,
-      channel: p.channel,
-      ts: p.ts,
+      event: p.event ?? "",
+      sessionId: p.session_id ?? "",
+      verifiedMsisdn: p.verified_msisdn ?? "",
+      channel: p.channel ?? "",
+      ts: p.ts ?? "",
     };
   }
 
   async #request(method: string, path: string, body?: string): Promise<any> {
-    const res = await this.#fetch(this.#baseUrl + path, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.#apiKey}`,
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      body,
-    });
+    let res: Response;
+    try {
+      res = await this.#fetch(this.#baseUrl + path, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.#apiKey}`,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body,
+        signal: AbortSignal.timeout(this.#timeoutMs),
+      });
+    } catch (e) {
+      const name = (e as { name?: string })?.name;
+      if (name === "TimeoutError" || name === "AbortError") {
+        throw new CallToVerifyError(0, "timeout", `request timed out after ${this.#timeoutMs}ms`);
+      }
+      throw new CallToVerifyError(0, "network_error", (e as Error)?.message ?? "network error");
+    }
     const text = await res.text();
-    const json = text ? JSON.parse(text) : {};
+    let json: any = {};
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        // A non-JSON body (e.g. an HTML 502 from a proxy) must still surface as a
+        // CallToVerifyError carrying the status, not a bare SyntaxError.
+        throw new CallToVerifyError(res.status, res.ok ? "invalid_response" : "error", res.statusText || "non-JSON response body");
+      }
+    }
     if (!res.ok) {
       throw new CallToVerifyError(res.status, json.error ?? "error", json.detail ?? res.statusText);
     }
