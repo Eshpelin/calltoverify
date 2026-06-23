@@ -58,6 +58,8 @@ export function mount(target: HTMLElement | string, opts: MountOptions): WidgetH
   const ctrl = createController(opts);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let countdownTimer: ReturnType<typeof setInterval> | undefined;
+  let stopped = false; // set by stop(); guards late async events from re-arming timers
+  let polling = false; // true while a poll() is in flight, so polls don't stack
 
   const stopTimers = () => {
     if (pollTimer) clearInterval(pollTimer);
@@ -65,27 +67,45 @@ export function mount(target: HTMLElement | string, opts: MountOptions): WidgetH
     pollTimer = countdownTimer = undefined;
   };
 
+  // Full teardown: a pending begin()/poll() promise can still resolve after the
+  // caller stops the widget, so flip a flag the event handlers honor rather than
+  // only clearing timers (which the "instructions" handler would otherwise re-arm).
+  const stop = () => {
+    stopped = true;
+    stopTimers();
+  };
+
   ctrl.on("instructions", (i) => {
+    if (stopped) return;
     renderInstructions(root, i as Instructions, L, channels.length > 1, () => switchChannel());
-    pollTimer = setInterval(() => void ctrl.poll(), opts.pollIntervalMs ?? 2500);
+    pollTimer = setInterval(() => {
+      if (stopped || polling) return;
+      polling = true;
+      Promise.resolve(ctrl.poll()).finally(() => {
+        polling = false;
+      });
+    }, opts.pollIntervalMs ?? 2500);
     const tick = () => updateCountdown(root, (i as Instructions).expiresAt, L);
     countdownTimer = setInterval(tick, 1000);
     tick();
   });
 
   ctrl.on("verified", (m) => {
+    if (stopped) return;
     stopTimers();
     renderFinal(root, "ok", L.successTitle, L.successSubtitle, ICONS.check, typeof m === "string" ? m : undefined);
     opts.onVerified?.(m as string | undefined);
   });
 
   ctrl.on("expired", () => {
+    if (stopped) return;
     stopTimers();
     renderFinal(root, "bad", L.expiredTitle, "", ICONS.alert, undefined, L.expiredRetry, () => restart());
     opts.onExpired?.();
   });
 
   ctrl.on("error", () => {
+    if (stopped) return;
     if (ctrl.state() === "error") {
       stopTimers();
       renderFinal(root, "bad", L.errorTitle, "", ICONS.alert, undefined, L.errorRetry, () => restart());
@@ -118,7 +138,7 @@ export function mount(target: HTMLElement | string, opts: MountOptions): WidgetH
   }
 
   start();
-  return { stop: stopTimers, controller: ctrl };
+  return { stop, controller: ctrl };
 }
 
 function renderChooser(root: HTMLElement, channels: Channel[], L: Labels, onPick: (c: Channel) => void): void {
