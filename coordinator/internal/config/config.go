@@ -3,6 +3,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -64,6 +65,7 @@ func getenvBool(key string, def bool) bool {
 		if b, err := strconv.ParseBool(v); err == nil {
 			return b
 		}
+		slog.Warn("ignoring malformed boolean env var; using default", "key", key, "value", v, "default", def)
 	}
 	return def
 }
@@ -80,6 +82,7 @@ func getenvInt(key string, def int) int {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
 		}
+		slog.Warn("ignoring malformed integer env var; using default", "key", key, "value", v, "default", def)
 	}
 	return def
 }

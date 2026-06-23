@@ -372,9 +372,12 @@ func (e *Engine) NewPairing(ctx context.Context, p PairingParams) (Pairing, erro
 			return Pairing{}, err
 		}
 	}
-	payload, _ := json.Marshal(map[string]string{
+	payload, err := json.Marshal(map[string]string{
 		"endpoint": p.Endpoint, "device_id": dev.ID, "device_secret": secret,
 	})
+	if err != nil {
+		return Pairing{}, err
+	}
 	return Pairing{DeviceID: dev.ID, DeviceSecret: secret, Endpoint: p.Endpoint, QRPayload: string(payload)}, nil
 }
 
