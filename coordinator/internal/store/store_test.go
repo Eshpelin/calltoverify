@@ -135,6 +135,32 @@ func TestParityDeleteDeviceCascade(t *testing.T) {
 	})
 }
 
+// TestParityInboundEventRetention checks that DeleteInboundEventsBefore prunes
+// audit rows older than the cutoff, on both backends.
+func TestParityInboundEventRetention(t *testing.T) {
+	runParity(t, func(t *testing.T, st Store) {
+		ctx := context.Background()
+		_, _, num := seed(t, st, []string{"sms"}, "+8801700000099")
+		sender := "+8801712345678"
+		for i := 0; i < 3; i++ {
+			if err := st.CreateInboundEvent(ctx, InboundEvent{NumberID: num.ID, Type: "sms", Sender: sender, Body: "x"}); err != nil {
+				t.Fatalf("CreateInboundEvent: %v", err)
+			}
+		}
+		if n, err := st.CountInboundBySender(ctx, sender, time.Now().Add(-time.Hour), false); err != nil || n != 3 {
+			t.Fatalf("pre-prune count = %d err %v, want 3", n, err)
+		}
+		// Cutoff just after "now" prunes everything created above.
+		deleted, err := st.DeleteInboundEventsBefore(ctx, time.Now().Add(time.Minute))
+		if err != nil || deleted != 3 {
+			t.Fatalf("DeleteInboundEventsBefore = %d err %v, want 3", deleted, err)
+		}
+		if n, _ := st.CountInboundBySender(ctx, sender, time.Now().Add(-time.Hour), false); n != 0 {
+			t.Fatalf("post-prune count = %d, want 0", n)
+		}
+	})
+}
+
 func TestParitySMSVerifyFlow(t *testing.T) {
 	runParity(t, func(t *testing.T, st Store) {
 		ctx := context.Background()

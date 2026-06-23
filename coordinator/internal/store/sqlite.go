@@ -345,6 +345,14 @@ func (s *sqliteStore) ExpireDue(ctx context.Context) (int64, error) {
 	return res.RowsAffected()
 }
 
+func (s *sqliteStore) DeleteInboundEventsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM inbound_events WHERE received_at < ?`, fmtTime(cutoff.UTC()))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // --- inbound events & blocks ---
 
 func (s *sqliteStore) CreateInboundEvent(ctx context.Context, ev InboundEvent) error {

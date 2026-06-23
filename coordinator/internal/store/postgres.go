@@ -271,6 +271,14 @@ func (s *pgStore) ExpireDue(ctx context.Context) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
+func (s *pgStore) DeleteInboundEventsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM inbound_events WHERE received_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 // --- inbound events & blocks ---
 
 func (s *pgStore) CreateInboundEvent(ctx context.Context, ev InboundEvent) error {

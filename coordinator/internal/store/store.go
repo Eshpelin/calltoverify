@@ -70,6 +70,9 @@ type Store interface {
 	// CountInboundBySender counts inbound events from a sender since a time. With
 	// unmatchedOnly, it counts only events that matched no session (failed attempts).
 	CountInboundBySender(ctx context.Context, sender string, since time.Time, unmatchedOnly bool) (int, error)
+	// DeleteInboundEventsBefore prunes audit rows older than cutoff so the table
+	// does not grow without bound (the recent window is all maybeBlock needs).
+	DeleteInboundEventsBefore(ctx context.Context, cutoff time.Time) (int64, error)
 	IsBlocked(ctx context.Context, target string) (bool, error)
 	CreateBlock(ctx context.Context, target, kind, reason string, until *time.Time) error
 }

@@ -71,7 +71,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddr,
-		Handler: server.Routes(),
+		Handler: limitInFlight(cfg.MaxInFlight, server.Routes()),
 		// Bound slow-header (slowloris), slow-body, slow-response, and idle-keepalive
 		// connections so a few hung clients cannot exhaust goroutines/connections.
 		ReadHeaderTimeout: 5 * time.Second,
@@ -80,10 +80,10 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	// Background sweep: expire stale pending sessions.
+	// Background sweep: expire stale pending sessions and prune old audit rows.
 	sweepCtx, stopSweep := context.WithCancel(rootCtx)
 	defer stopSweep()
-	go expireLoop(sweepCtx, st, logger)
+	go expireLoop(sweepCtx, st, cfg.InboundRetention, logger)
 
 	go func() {
 		logger.Info("coordinator listening", "addr", cfg.ListenAddr, "env", cfg.Env)
@@ -120,9 +120,11 @@ func waitForDB(ctx context.Context, st store.Store, logger *slog.Logger) error {
 	return err
 }
 
-func expireLoop(ctx context.Context, st store.Store, logger *slog.Logger) {
+func expireLoop(ctx context.Context, st store.Store, retention time.Duration, logger *slog.Logger) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
+	prune := time.NewTicker(time.Hour) // audit pruning is hourly, not every sweep
+	defer prune.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -133,6 +135,32 @@ func expireLoop(ctx context.Context, st store.Store, logger *slog.Logger) {
 			} else if n > 0 {
 				logger.Info("sessions expired", "count", n)
 			}
+		case <-prune.C:
+			if retention > 0 {
+				if n, err := st.DeleteInboundEventsBefore(ctx, time.Now().Add(-retention)); err != nil {
+					logger.Warn("inbound_events prune", "err", err)
+				} else if n > 0 {
+					logger.Info("inbound_events pruned", "count", n)
+				}
+			}
 		}
 	}
+}
+
+// limitInFlight caps concurrent in-flight requests; excess return 503 so a flood
+// of slow connections cannot exhaust goroutines or the DB connection pool.
+func limitInFlight(max int, next http.Handler) http.Handler {
+	if max <= 0 {
+		return next
+	}
+	sem := make(chan struct{}, max)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case sem <- struct{}{}:
+			defer func() { <-sem }()
+			next.ServeHTTP(w, r)
+		default:
+			http.Error(w, `{"error":"unavailable","detail":"server busy"}`, http.StatusServiceUnavailable)
+		}
+	})
 }
