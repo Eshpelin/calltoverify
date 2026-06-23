@@ -6,7 +6,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](#project-status)
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Eshpelin/calltoverify/actions/workflows/ci.yml/badge.svg)](https://github.com/Eshpelin/calltoverify/actions/workflows/ci.yml)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 </div>
@@ -339,9 +339,10 @@ The console gives you that exact pairing command (with a copy button) when you a
 
 ## Project status
 
-**Alpha, but the whole loop works end to end** for all three channels (SMS, missed call, DTMF).
-A cross-language end-to-end test ([`scripts/e2e.sh`](scripts/e2e.sh)) drives the Go engine with
-the Python receiver client and verifies a number over HTTP.
+**Alpha, but the whole loop works end to end.** A cross-language end-to-end test
+([`scripts/e2e.sh`](scripts/e2e.sh)) drives the Go engine with the Python receiver client over
+HTTP and covers the SMS happy path, missed-call (claim binding), and a negative case. DTMF shares
+the same signed inbound path and is unit-tested.
 
 | Component | What | Verified |
 |---|---|---|

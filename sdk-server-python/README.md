@@ -56,7 +56,7 @@ except CallToVerifyError:
 - `CallToVerify(base_url, api_key, webhook_secret=None, *, timeout=10.0)`
 - `start_verification(*, channel=None, binding_mode=None, claimed_msisdn=None) -> Verification`
 - `check_status(session_id) -> VerificationStatus`
-- `verify_webhook(raw_body, signature) -> WebhookEvent` (raises `CallToVerifyError` on mismatch)
+- `verify_webhook(raw_body, signature, max_age_seconds=None) -> WebhookEvent` (raises `CallToVerifyError` on signature mismatch; pass `max_age_seconds` to also reject events whose `ts` is older than the window)
 
 Non-2xx responses raise `CallToVerifyError` with `.status` and `.code`.
 
