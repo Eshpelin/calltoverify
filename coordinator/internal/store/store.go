@@ -92,7 +92,30 @@ func nowUTC() time.Time { return time.Now().UTC() }
 // isVoiceChannel reports whether a channel occupies a SIM's single voice line.
 func isVoiceChannel(channel string) bool { return channel == "call" || channel == "dtmf" }
 
-// MaxPendingPerNumber caps how many pending sessions a single number may hold, so
-// one number cannot be flooded into exhaustion (codes, memory) by abuse. PickNumber
-// skips numbers at the cap. The default is generous for legitimate concurrency.
-var MaxPendingPerNumber = 100
+// DefaultMaxPendingPerNumber caps how many pending sessions a single number may
+// hold, so one number cannot be flooded into exhaustion (codes, memory) by abuse.
+// PickNumber skips numbers at the cap. Override per-store with WithMaxPending.
+const DefaultMaxPendingPerNumber = 100
+
+// Option configures a store at construction (NewSQLite / NewPostgres).
+type Option func(*options)
+
+type options struct{ maxPending int }
+
+func resolveOptions(opts []Option) options {
+	o := options{maxPending: DefaultMaxPendingPerNumber}
+	for _, fn := range opts {
+		fn(&o)
+	}
+	return o
+}
+
+// WithMaxPending overrides the per-number pending-session cap. Values <= 0 are
+// ignored (the default stands).
+func WithMaxPending(n int) Option {
+	return func(o *options) {
+		if n > 0 {
+			o.maxPending = n
+		}
+	}
+}

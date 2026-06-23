@@ -70,6 +70,7 @@ The Coordinator applies its own schema migrations on startup (tracked in `schema
 | `CTV_INBOUND_RETENTION_DAYS` | `30` | How long `inbound_events` audit rows are kept before the sweep prunes them. |
 | `CTV_WEBHOOK_ALLOW_PRIVATE` | `false` | Allow webhooks to reach loopback/private IPs (SSRF guard off). Enable only for trusted internal webhook hosts. |
 | `CTV_REDIS_FAIL_CLOSED` | `false` | When Redis is unreachable, reject (preserve replay protection) instead of failing open to in-process nonces. |
+| `CTV_MAX_PENDING_PER_NUMBER` | `100` | Cap on pending sessions per number; a number at the cap is skipped by the pool (flood/exhaustion guard). |
 
 ## HTTP surface and auth
 

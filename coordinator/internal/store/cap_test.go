@@ -11,11 +11,7 @@ import (
 // TestMaxPendingPerNumber verifies a number is skipped once it holds the cap of
 // pending sessions, bounding flood/exhaustion abuse.
 func TestMaxPendingPerNumber(t *testing.T) {
-	old := MaxPendingPerNumber
-	MaxPendingPerNumber = 3
-	defer func() { MaxPendingPerNumber = old }()
-
-	st, err := NewSQLite(":memory:")
+	st, err := NewSQLite(":memory:", WithMaxPending(3))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -34,6 +34,9 @@ type Config struct {
 	// webhook_secret at rest. 32 bytes as hex or base64. Empty = plaintext (legacy,
 	// still readable after the key is enabled). CTV_SECRET_KEY
 	SecretKey string
+	// MaxPendingPerNumber caps pending sessions per number (flood/exhaustion guard).
+	// CTV_MAX_PENDING_PER_NUMBER
+	MaxPendingPerNumber int
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -52,6 +55,7 @@ func Load() Config {
 		MaxInFlight:         getenvInt("CTV_MAX_INFLIGHT", 512),
 		InboundRetention:    time.Duration(getenvInt("CTV_INBOUND_RETENTION_DAYS", 30)) * 24 * time.Hour,
 		SecretKey:           getenv("CTV_SECRET_KEY", ""),
+		MaxPendingPerNumber: getenvInt("CTV_MAX_PENDING_PER_NUMBER", 100),
 	}
 }
 
