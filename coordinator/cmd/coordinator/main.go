@@ -70,9 +70,14 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:              cfg.ListenAddr,
-		Handler:           server.Routes(),
+		Addr:    cfg.ListenAddr,
+		Handler: server.Routes(),
+		// Bound slow-header (slowloris), slow-body, slow-response, and idle-keepalive
+		// connections so a few hung clients cannot exhaust goroutines/connections.
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	// Background sweep: expire stale pending sessions.
