@@ -86,4 +86,10 @@ func TestNonceCache(t *testing.T) {
 	if c.Seen("n2", now) {
 		t.Fatal("distinct nonce should be fresh")
 	}
+	// After the TTL passes, the same nonce is fresh again (the entry is expired and
+	// the once-per-TTL GC reclaims it).
+	later := now.Add(2 * time.Minute)
+	if c.Seen("n1", later) {
+		t.Fatal("nonce should be fresh again after the TTL elapses")
+	}
 }

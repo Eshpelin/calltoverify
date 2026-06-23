@@ -70,9 +70,10 @@ func ConstantTimeEqual(a, b string) bool {
 // NonceCache remembers recently seen device nonces to reject replays. It is
 // in-process; a multi-instance deployment should back this with Redis.
 type NonceCache struct {
-	mu   sync.Mutex
-	seen map[string]time.Time
-	ttl  time.Duration
+	mu     sync.Mutex
+	seen   map[string]time.Time
+	ttl    time.Duration
+	lastGC time.Time
 }
 
 func NewNonceCache(ttl time.Duration) *NonceCache {
@@ -83,11 +84,16 @@ func NewNonceCache(ttl time.Duration) *NonceCache {
 func (c *NonceCache) Seen(nonce string, now time.Time) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// Opportunistic GC of expired entries.
-	for k, t := range c.seen {
-		if now.Sub(t) > c.ttl {
-			delete(c.seen, k)
+	// GC at most once per TTL rather than scanning the whole map on every request
+	// (which is O(n) under the lock on the hot path). Correctness is unchanged: the
+	// replay check below still compares against the per-nonce timestamp.
+	if now.Sub(c.lastGC) > c.ttl {
+		for k, t := range c.seen {
+			if now.Sub(t) > c.ttl {
+				delete(c.seen, k)
+			}
 		}
+		c.lastGC = now
 	}
 	if t, ok := c.seen[nonce]; ok && now.Sub(t) <= c.ttl {
 		return true

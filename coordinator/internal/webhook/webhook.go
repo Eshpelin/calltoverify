@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -141,6 +142,9 @@ func (s *Sender) deliver(url string, body []byte, sig, sessionID string) {
 		resp, err := s.client.Do(req)
 		cancel()
 		if err == nil {
+			// Drain before close so the keep-alive connection can be reused instead
+			// of being torn down after every delivery.
+			_, _ = io.Copy(io.Discard, resp.Body)
 			_ = resp.Body.Close()
 			if resp.StatusCode < 300 {
 				return
