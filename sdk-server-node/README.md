@@ -59,12 +59,12 @@ try {
 
 ## API
 
-- `new CallToVerify({ baseUrl, apiKey, webhookSecret?, fetch? })`
+- `new CallToVerify({ baseUrl, apiKey, webhookSecret?, fetch?, timeoutMs? })` (`timeoutMs` defaults to 10000)
 - `startVerification(params?) => Promise<Verification>`
 - `checkStatus(sessionId) => Promise<VerificationStatus>`
-- `verifyWebhook(rawBody, signature) => WebhookEvent` (throws `CallToVerifyError` on mismatch)
+- `verifyWebhook(rawBody, signature, maxAgeSeconds?) => WebhookEvent` (throws `CallToVerifyError` on signature mismatch; pass `maxAgeSeconds` to also reject events whose `ts` is older than the window)
 
-Non-2xx responses throw `CallToVerifyError` with `status` and `code`.
+Non-2xx responses, timeouts, network errors, and non-JSON error bodies all throw `CallToVerifyError` with `status` and `code`.
 
 ## Develop
 
