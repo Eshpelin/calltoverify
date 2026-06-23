@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -13,12 +12,13 @@ import (
 )
 
 type sqliteStore struct {
-	db *sql.DB
+	db         *sql.DB
+	maxPending int
 }
 
 // NewSQLite opens (creating if needed) a SQLite database at path. Use ":memory:"
 // for an ephemeral store. This is the zero-infra default for the embedded engine.
-func NewSQLite(path string) (Store, error) {
+func NewSQLite(path string, opts ...Option) (Store, error) {
 	dsn := path + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -26,7 +26,7 @@ func NewSQLite(path string) (Store, error) {
 	}
 	// SQLite serialises writers; a single connection avoids "database is locked".
 	db.SetMaxOpenConns(1)
-	return &sqliteStore{db: db}, nil
+	return &sqliteStore{db: db, maxPending: resolveOptions(opts).maxPending}, nil
 }
 
 func (s *sqliteStore) Close()                         { _ = s.db.Close() }
@@ -224,14 +224,14 @@ func (s *sqliteStore) PickNumber(ctx context.Context, channel string) (Number, e
 	if isVoiceChannel(channel) {
 		excl = ` AND NOT EXISTS (SELECT 1 FROM sessions sv WHERE sv.number_id = n.id AND sv.status='pending' AND sv.channel IN ('call','dtmf'))`
 	}
-	capFilter := fmt.Sprintf(` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status='pending') < %d`, MaxPendingPerNumber)
+	capFilter := ` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status='pending') < ?`
 	return scanNumber(s.db.QueryRowContext(ctx,
 		`SELECT n.id, n.device_id, n.msisdn, n.channels, n.status, n.created_at
 		 FROM numbers n JOIN devices d ON d.id = n.device_id
 		 WHERE n.status='active' AND d.status='online'
 		   AND EXISTS (SELECT 1 FROM json_each(n.channels) WHERE value = ?)`+excl+capFilter+`
 		 ORDER BY (SELECT count(*) FROM sessions s WHERE s.number_id=n.id AND s.status='pending') ASC, random()
-		 LIMIT 1`, channel))
+		 LIMIT 1`, channel, s.maxPending))
 }
 
 func (s *sqliteStore) CountAvailableNumbers(ctx context.Context, channel string) (int, error) {

@@ -67,6 +67,8 @@ type Options struct {
 	// SecretKey, when set (32 bytes), enables AES-256-GCM encryption of
 	// device_secret and webhook_secret at rest. Plaintext stays readable.
 	SecretKey []byte
+	// MaxPendingPerNumber caps pending sessions per number (0 = default of 100).
+	MaxPendingPerNumber int
 }
 
 // Event is delivered to OnVerified when a number is verified.
@@ -152,14 +154,15 @@ func New(ctx context.Context, opts Options) (*Engine, error) {
 
 	var st store.Store
 	var err error
+	storeOpts := []store.Option{store.WithMaxPending(opts.MaxPendingPerNumber)}
 	if opts.PostgresDSN != "" {
-		st, err = store.NewPostgres(ctx, opts.PostgresDSN)
+		st, err = store.NewPostgres(ctx, opts.PostgresDSN, storeOpts...)
 	} else {
 		path := opts.SQLitePath
 		if path == "" {
 			path = "calltoverify.db"
 		}
-		st, err = store.NewSQLite(path)
+		st, err = store.NewSQLite(path, storeOpts...)
 	}
 	if err != nil {
 		return nil, err

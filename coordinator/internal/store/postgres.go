@@ -12,16 +12,17 @@ import (
 )
 
 type pgStore struct {
-	pool *pgxpool.Pool
+	pool       *pgxpool.Pool
+	maxPending int
 }
 
 // NewPostgres opens a connection pool to the given DSN.
-func NewPostgres(ctx context.Context, dsn string) (Store, error) {
+func NewPostgres(ctx context.Context, dsn string, opts ...Option) (Store, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
-	return &pgStore{pool: pool}, nil
+	return &pgStore{pool: pool, maxPending: resolveOptions(opts).maxPending}, nil
 }
 
 func (s *pgStore) Close() { s.pool.Close() }
@@ -178,8 +179,8 @@ func (s *pgStore) PickNumber(ctx context.Context, channel string) (Number, error
 	if isVoiceChannel(channel) {
 		excl = ` AND NOT EXISTS (SELECT 1 FROM sessions sv WHERE sv.number_id = n.id AND sv.status = 'pending' AND sv.channel IN ('call','dtmf'))`
 	}
-	// Skip numbers already at the pending-session cap.
-	capFilter := fmt.Sprintf(` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status = 'pending') < %d`, MaxPendingPerNumber)
+	// Skip numbers already at the pending-session cap ($2, a bound parameter).
+	capFilter := ` AND (SELECT count(*) FROM sessions sc WHERE sc.number_id = n.id AND sc.status = 'pending') < $2`
 	var n Number
 	err := s.pool.QueryRow(ctx,
 		`SELECT n.id, n.device_id, n.msisdn, n.channels, n.status, n.created_at
@@ -188,7 +189,7 @@ func (s *pgStore) PickNumber(ctx context.Context, channel string) (Number, error
 		 WHERE n.status = 'active' AND d.status = 'online' AND $1 = ANY(n.channels)`+excl+capFilter+`
 		 ORDER BY (SELECT count(*) FROM sessions s WHERE s.number_id = n.id AND s.status = 'pending') ASC,
 		          random()
-		 LIMIT 1`, channel,
+		 LIMIT 1`, channel, s.maxPending,
 	).Scan(&n.ID, &n.DeviceID, &n.MSISDN, &n.Channels, &n.Status, &n.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Number{}, ErrNotFound

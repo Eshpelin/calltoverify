@@ -29,7 +29,7 @@ func main() {
 
 	rootCtx := context.Background()
 
-	st, err := store.NewPostgres(rootCtx, cfg.DatabaseURL)
+	st, err := store.NewPostgres(rootCtx, cfg.DatabaseURL, store.WithMaxPending(cfg.MaxPendingPerNumber))
 	if err != nil {
 		logger.Error("store init", "err", err)
 		os.Exit(1)
