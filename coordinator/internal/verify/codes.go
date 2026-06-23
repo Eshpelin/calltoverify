@@ -48,18 +48,33 @@ func generateCode(n int) (string, error) {
 	return b.String(), nil
 }
 
-// extractCode reduces an inbound body to its digits and returns them when the
-// length is plausible for a code. Handles "123456", "your code is 123456", and
-// "123 456" alike; rejects noisy bodies by returning "".
+// extractCode returns the first plausible code from an inbound body. It collapses
+// common code separators (spaces, hyphens, dots) so "123 456" and "12-34-56" read
+// as one code, then returns the first maximal digit run of length 4..12.
+//
+// It deliberately takes maximal *runs* rather than concatenating every digit in
+// the body: gluing unrelated digits (e.g. "abc123def456" -> "123456") produced
+// false matches. Out-of-range runs are skipped, not merged.
 func extractCode(body string) string {
-	var b strings.Builder
-	for _, r := range body {
-		if r >= '0' && r <= '9' {
-			b.WriteRune(r)
+	cleaned := strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\t', '\n', '\r', '-', '.':
+			return -1
 		}
+		return r
+	}, body)
+	var run strings.Builder
+	for _, r := range cleaned {
+		if r >= '0' && r <= '9' {
+			run.WriteByte(byte(r))
+			continue
+		}
+		if s := run.String(); len(s) >= 4 && len(s) <= 12 {
+			return s
+		}
+		run.Reset()
 	}
-	s := b.String()
-	if len(s) >= 4 && len(s) <= 12 {
+	if s := run.String(); len(s) >= 4 && len(s) <= 12 {
 		return s
 	}
 	return ""

@@ -53,9 +53,13 @@ func TestExtractCode(t *testing.T) {
 		"123456":              "123456",
 		"your code is 482913": "482913",
 		"123 456":             "123456",
+		"12-34-56":            "123456", // hyphen-formatted code
+		"go 778899 now":       "778899",
 		"hi":                  "",
 		"12":                  "",
 		"  4827 ":             "4827",
+		"abc123def456":        "", // two 3-digit runs must NOT glue into a false 123456
+		"ab12cd34ef56":        "", // all runs too short
 	}
 	for in, want := range cases {
 		if got := extractCode(in); got != want {
