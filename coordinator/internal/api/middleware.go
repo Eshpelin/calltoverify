@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/httpx"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
 )
 
-const maxBodyBytes = 1 << 20 // 1 MiB
+const maxBodyBytes = httpx.MaxBodyBytes
 
 type ctxKey int
 
@@ -85,12 +86,10 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
-}
+// writeJSON and writeErr forward to the shared httpx helpers so the JSON writer
+// and the {"error","detail"} envelope live in one place.
+func writeJSON(w http.ResponseWriter, status int, body any) { httpx.WriteJSON(w, status, body) }
 
 func writeErr(w http.ResponseWriter, status int, code, detail string) {
-	writeJSON(w, status, map[string]string{"error": code, "detail": detail})
+	httpx.WriteErr(w, status, code, detail)
 }
