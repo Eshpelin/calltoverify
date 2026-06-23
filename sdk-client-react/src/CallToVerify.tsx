@@ -38,6 +38,23 @@ export function CallToVerify(props: CallToVerifyProps): ReactElement {
   const [remaining, setRemaining] = useState(0);
   const sessionRef = useRef<string | undefined>(undefined);
   const startedRef = useRef(false);
+  const mountedRef = useRef(true);
+  // Keep the callbacks in refs so the polling effect doesn't depend on their
+  // identity (inline props get a new identity every render, which would tear down
+  // and rebuild the interval each time).
+  const onVerifiedRef = useRef(onVerified);
+  const onExpiredRef = useRef(onExpired);
+  useEffect(() => {
+    onVerifiedRef.current = onVerified;
+    onExpiredRef.current = onExpired;
+  });
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => injectStyles(), []);
 
@@ -48,11 +65,14 @@ export function CallToVerify(props: CallToVerifyProps): ReactElement {
       setPhase("starting");
       start(channel)
         .then((r) => {
+          if (!mountedRef.current) return;
           sessionRef.current = r.sessionId;
           setInstr(r.instructions);
           setPhase("instr");
         })
-        .catch(() => setPhase("error"));
+        .catch(() => {
+          if (mountedRef.current) setPhase("error");
+        });
     },
     [start],
   );
@@ -66,24 +86,31 @@ export function CallToVerify(props: CallToVerifyProps): ReactElement {
 
   useEffect(() => {
     if (phase !== "instr") return;
+    let inFlight = false;
     const id = setInterval(() => {
       const sid = sessionRef.current;
-      if (!sid) return;
+      if (!sid || inFlight) return; // don't stack overlapping polls
+      inFlight = true;
       status(sid)
         .then((s) => {
+          inFlight = false;
+          // Ignore a response that arrives after unmount or for a stale session.
+          if (!mountedRef.current || sessionRef.current !== sid) return;
           if (s.status === "verified") {
             setVerified(s.verifiedMsisdn);
             setPhase("verified");
-            onVerified?.(s.verifiedMsisdn);
+            onVerifiedRef.current?.(s.verifiedMsisdn);
           } else if (s.status === "expired" || s.status === "failed") {
             setPhase("expired");
-            onExpired?.();
+            onExpiredRef.current?.();
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          inFlight = false;
+        });
     }, pollIntervalMs);
     return () => clearInterval(id);
-  }, [phase, status, pollIntervalMs, onVerified, onExpired]);
+  }, [phase, status, pollIntervalMs]);
 
   useEffect(() => {
     if (phase !== "instr" || !instr) return;
