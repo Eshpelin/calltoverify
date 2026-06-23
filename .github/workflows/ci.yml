@@ -161,6 +161,23 @@ jobs:
       - run: flutter pub get
       - run: flutter test
 
+  receiver-android:
+    name: Android receiver (Kotlin)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: receiver-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      # Runs HmacSignerTest, the Kotlin half of the cross-language device-signing
+      # known-answer vector, so drift from the Go verifier is caught on every PR.
+      - run: ./gradlew :app:testDebugUnitTest --no-daemon
+
   e2e:
     name: Cross-language E2E
     runs-on: ubuntu-latest
