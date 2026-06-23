@@ -32,6 +32,10 @@ func NewSQLite(path string, opts ...Option) (Store, error) {
 func (s *sqliteStore) Close()                         { _ = s.db.Close() }
 func (s *sqliteStore) Ping(ctx context.Context) error { return s.db.PingContext(ctx) }
 
+// sqliteSchema mirrors migrations/0001_init.sql, including the enum CHECK
+// constraints, so the embedded (SQLite) backend rejects the same invalid values
+// the Postgres backend does. Keep the CHECK lists in lockstep with the migration;
+// TestSchemaEnumParity asserts they match.
 const sqliteSchema = `
 CREATE TABLE IF NOT EXISTS apps (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, api_key_hash TEXT NOT NULL UNIQUE,
@@ -39,16 +43,21 @@ CREATE TABLE IF NOT EXISTS apps (
   config TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY, app_id TEXT NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
-  name TEXT NOT NULL, device_secret TEXT NOT NULL, type TEXT NOT NULL,
-  capabilities TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'offline',
+  name TEXT NOT NULL, device_secret TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('android', 'pi')),
+  capabilities TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'offline' CHECK (status IN ('online', 'offline', 'disabled')),
   last_heartbeat TEXT, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS numbers (
   id TEXT PRIMARY KEY, device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   msisdn TEXT NOT NULL UNIQUE, channels TEXT NOT NULL DEFAULT '[]',
-  status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'disabled')),
+  created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY, app_id TEXT NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
-  channel TEXT NOT NULL, binding_mode TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+  channel TEXT NOT NULL CHECK (channel IN ('sms', 'call', 'dtmf')),
+  binding_mode TEXT NOT NULL CHECK (binding_mode IN ('derive', 'claim')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'expired', 'failed')),
   number_id TEXT, code TEXT, claimed_msisdn TEXT, verified_msisdn TEXT,
   attempts INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS sessions_active_code_per_number
@@ -57,12 +66,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS sessions_one_voice_per_number
   ON sessions(number_id) WHERE status='pending' AND channel IN ('call','dtmf');
 CREATE INDEX IF NOT EXISTS sessions_app_status ON sessions(app_id, status);
 CREATE TABLE IF NOT EXISTS inbound_events (
-  id TEXT PRIMARY KEY, number_id TEXT, type TEXT NOT NULL, sender TEXT NOT NULL,
+  id TEXT PRIMARY KEY, number_id TEXT,
+  type TEXT NOT NULL CHECK (type IN ('sms', 'call')),
+  sender TEXT NOT NULL,
   body TEXT, matched_session_id TEXT, received_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS inbound_events_sender_time ON inbound_events (sender, received_at);
 CREATE TABLE IF NOT EXISTS blocks (
-  id TEXT PRIMARY KEY, target TEXT NOT NULL, kind TEXT NOT NULL, reason TEXT,
-  until TEXT, created_at TEXT NOT NULL);
+  id TEXT PRIMARY KEY, target TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('msisdn', 'ip')),
+  reason TEXT, until TEXT, created_at TEXT NOT NULL);
 `
 
 func (s *sqliteStore) Migrate(ctx context.Context) error {
