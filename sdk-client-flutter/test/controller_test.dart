@@ -7,7 +7,16 @@ const _instr = Instructions(
   channel: 'sms',
   action: 'Send 123456 to +8801700000001',
   deepLink: 'sms:+8801700000001?body=123456',
-  expiresAt: '2026-01-01T00:00:00Z',
+  expiresAt: '2099-01-01T00:00:00Z',
+);
+
+const _expiredInstr = Instructions(
+  number: '+8801700000001',
+  code: '123456',
+  channel: 'sms',
+  action: 'Send 123456 to +8801700000001',
+  deepLink: 'sms:+8801700000001?body=123456',
+  expiresAt: '2000-01-01T00:00:00Z',
 );
 
 void main() {
@@ -37,6 +46,25 @@ void main() {
     expect(await c.poll(), VerificationPhase.instr);
     expect(await c.poll(), VerificationPhase.verified);
     expect(c.verifiedMsisdn, '+8801711111111');
+  });
+
+  test('poll surfaces expiry once the client-side deadline passes', () async {
+    final c = VerificationController(
+      start: (ch) async => const StartResult(sessionId: 's1', instructions: _expiredInstr),
+      status: (id) async => const StatusResult(status: 'pending'), // backend never reports expiry
+    );
+    await c.begin(Channel.sms);
+    expect(await c.poll(), VerificationPhase.expired);
+  });
+
+  test('begin retains the error on failure', () async {
+    final c = VerificationController(
+      start: (ch) async => throw StateError('boom'),
+      status: (id) async => const StatusResult(status: 'pending'),
+    );
+    await c.begin(Channel.sms);
+    expect(c.phase, VerificationPhase.error);
+    expect(c.lastError, isA<StateError>());
   });
 
   test('reset returns to the chooser when multiple channels', () async {

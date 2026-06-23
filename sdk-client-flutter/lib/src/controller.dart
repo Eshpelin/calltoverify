@@ -26,11 +26,15 @@ class VerificationController extends ChangeNotifier {
   String? verifiedMsisdn;
   String? _sessionId;
 
+  /// The error that caused the last transition to [VerificationPhase.error], if any.
+  Object? lastError;
+
   String? get sessionId => _sessionId;
 
   Future<void> begin([Channel? channel]) async {
     instructions = null;
     _sessionId = null;
+    lastError = null;
     phase = VerificationPhase.starting;
     notifyListeners();
     try {
@@ -38,7 +42,8 @@ class VerificationController extends ChangeNotifier {
       _sessionId = r.sessionId;
       instructions = r.instructions;
       phase = VerificationPhase.instr;
-    } catch (_) {
+    } catch (e) {
+      lastError = e;
       phase = VerificationPhase.error;
     }
     notifyListeners();
@@ -46,6 +51,14 @@ class VerificationController extends ChangeNotifier {
 
   Future<VerificationPhase> poll() async {
     if (phase != VerificationPhase.instr || _sessionId == null) return phase;
+    // Client-side deadline: once the instructions expire, stop polling and surface
+    // expiry even if the backend never reports it.
+    final exp = instructions != null ? DateTime.tryParse(instructions!.expiresAt) : null;
+    if (exp != null && DateTime.now().isAfter(exp)) {
+      phase = VerificationPhase.expired;
+      notifyListeners();
+      return phase;
+    }
     try {
       final s = await status(_sessionId!);
       if (s.status == 'verified') {
