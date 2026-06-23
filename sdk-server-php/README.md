@@ -122,7 +122,7 @@ The package auto-registers a service provider and a `CallToVerify` facade (Larav
 - `startVerification(array $params = []): Verification`
   - keys: `channel`, `binding_mode` (or `bindingMode`), `claimed_msisdn` (or `claimedMsisdn`). Null fields are omitted.
 - `checkStatus(string $sessionId): VerificationStatus`
-- `verifyWebhook(string $rawBody, string $signature): WebhookEvent` — throws `CallToVerifyException` on mismatch.
+- `verifyWebhook(string $rawBody, string $signature, ?int $maxAgeSeconds = null): WebhookEvent` — throws `CallToVerifyException` on signature mismatch; pass `$maxAgeSeconds` to also reject events whose `ts` is older than the window.
 
 ### Result objects (readonly)
 

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Example: a Node backend using @calltoverify/sdk against a standalone Coordinator.",
   "scripts": {
+    "prestart": "npm --prefix ../../sdk-server-node install --no-audit --no-fund && npm --prefix ../../sdk-server-node run build",
     "start": "node server.mjs"
   }
 }

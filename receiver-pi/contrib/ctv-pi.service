@@ -2,12 +2,28 @@
 Description=CallToVerify Pi receiver (heartbeat + retry)
 After=network-online.target
 Wants=network-online.target
+# Pair with Restart=always to avoid a crash-loop hammering the backend.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 ExecStart=/usr/local/bin/ctv-pi run --interval 60
 Restart=always
 RestartSec=5
 User=calltoverify
+
+# Sandboxing (see systemd.exec(5)). ProtectSystem=full (not strict) keeps the
+# home-based config dir (~/.config/calltoverify, holding the device secret) and
+# its retry queue writable while making /usr, /boot, and /etc read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target

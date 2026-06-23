@@ -16,12 +16,17 @@ This is a polyglot monorepo. Each component is self-contained with its own toolc
 | Path | Stack | Build / test |
 |---|---|---|
 | `coordinator/` | Go | `go build ./...`, `go test ./...`, `go vet ./...` |
-| `receiver-android/` | Kotlin | Gradle (planned) |
-| `receiver-pi/` | Python | `pytest` (planned) |
-| `sdk-server-node/` | Node / TS | `npm test` (planned) |
-| `widget-web/` | JS | `npm test` (planned) |
+| `receiver-android/` | Kotlin | `./gradlew :app:testDebugUnitTest` |
+| `receiver-pi/` | Python | `python -m unittest discover -s tests -t .` |
+| `sdk-server-node/` | Node / TS | `npm test` |
+| `sdk-server-python/` | Python | `python -m unittest discover -s tests -t .` |
+| `sdk-server-php/` | PHP | `composer test` |
+| `widget-web/` | JS / TS | `npm test` |
+| `sdk-client-react/` | React / TS | `npm test` |
+| `sdk-client-flutter/` | Dart / Flutter | `flutter test` |
 
-Only `coordinator/` is runnable today. Other directories carry READMEs describing scope.
+Every component above runs in CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on each
+push and pull request. Each directory also carries a README describing its scope.
 
 ## Development setup
 
@@ -64,9 +69,9 @@ under the project's Apache-2.0 license.
 
 ## Code style
 
-- **Go:** `gofmt` / `go vet` clean. Standard library first; justify new dependencies.
-- **JS/TS:** Prettier defaults, two-space indent.
-- **Python:** `black` + `ruff`.
+- **Go:** `gofmt` / `go vet` clean (enforced in CI). Standard library first; justify new dependencies.
+- **JS/TS:** Prettier defaults, two-space indent (not yet enforced in CI; match the surrounding code).
+- **Python:** `black` + `ruff` style (not yet enforced in CI; match the surrounding code).
 - General: see `.editorconfig`. LF line endings, final newline, no trailing whitespace.
 
 ## License of contributions
