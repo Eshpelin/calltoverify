@@ -16,6 +16,10 @@ type Config struct {
 	AdminToken     string        // CTV_ADMIN_TOKEN: bearer token for /admin endpoints (disabled if empty)
 	DefaultCodeLen int           // CTV_DEFAULT_CODE_LEN
 	DefaultTTL     time.Duration // CTV_DEFAULT_TTL_SECONDS
+	// WebhookAllowPrivate lets webhooks reach loopback/private addresses. Off by
+	// default (SSRF defense); enable only for single-tenant self-hosts whose
+	// webhook genuinely lives on a private/internal address. CTV_WEBHOOK_ALLOW_PRIVATE
+	WebhookAllowPrivate bool
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -28,7 +32,18 @@ func Load() Config {
 		AdminToken:     getenv("CTV_ADMIN_TOKEN", ""),
 		DefaultCodeLen: getenvInt("CTV_DEFAULT_CODE_LEN", 6),
 		DefaultTTL:     time.Duration(getenvInt("CTV_DEFAULT_TTL_SECONDS", 90)) * time.Second,
+
+		WebhookAllowPrivate: getenvBool("CTV_WEBHOOK_ALLOW_PRIVATE", false),
 	}
+}
+
+func getenvBool(key string, def bool) bool {
+	if v := os.Getenv(key); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
+		}
+	}
+	return def
 }
 
 func getenv(key, def string) string {

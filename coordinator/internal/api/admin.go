@@ -5,6 +5,7 @@ import (
 
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/webhook"
 )
 
 type createAppReq struct {
@@ -28,6 +29,12 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if req.Name == "" {
 		writeErr(w, http.StatusBadRequest, "bad_request", "name is required")
 		return
+	}
+	if req.WebhookURL != "" {
+		if err := webhook.ValidateURL(req.WebhookURL); err != nil {
+			writeErr(w, http.StatusBadRequest, "bad_request", "invalid webhook_url: "+err.Error())
+			return
+		}
 	}
 
 	key, hash, prefix, err := auth.GenerateKey("ctv")
