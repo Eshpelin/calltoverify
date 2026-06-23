@@ -21,7 +21,7 @@ func TestRedisNonceCache(t *testing.T) {
 	}
 	defer rc.Close()
 
-	c := NewRedisNonceCache(rc, time.Minute)
+	c := NewRedisNonceCache(rc, time.Minute, false, nil)
 	now := time.Now()
 	nonce := "nonce:" + strconv.FormatInt(now.UnixNano(), 10)
 

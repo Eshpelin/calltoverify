@@ -21,7 +21,7 @@ func TestRedisLimiter(t *testing.T) {
 	}
 	defer rc.Close()
 
-	l := NewRedis(rc, 3) // 3 per minute
+	l := NewRedis(rc, 3, nil) // 3 per minute
 	key := "test:" + strconv.FormatInt(time.Now().UnixNano(), 10)
 
 	for i := 0; i < 3; i++ {

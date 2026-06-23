@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -65,10 +66,14 @@ type Service struct {
 	limiter        Limiter
 	defaultCodeLen int
 	defaultTTL     time.Duration
+	logger         *slog.Logger
 }
 
-func NewService(st store.Store, n Notifier, l Limiter, codeLen int, ttl time.Duration) *Service {
-	return &Service{store: st, notifier: n, limiter: l, defaultCodeLen: codeLen, defaultTTL: ttl}
+func NewService(st store.Store, n Notifier, l Limiter, codeLen int, ttl time.Duration, logger *slog.Logger) *Service {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Service{store: st, notifier: n, limiter: l, defaultCodeLen: codeLen, defaultTTL: ttl, logger: logger}
 }
 
 // --- start ---
@@ -244,13 +249,17 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 	// From here on every outcome is recorded as an inbound_event for audit.
 	var matchedID *string
 	defer func() {
-		_ = s.store.CreateInboundEvent(ctx, store.InboundEvent{
+		// This audit row is also the data source maybeBlock reads, so a silent
+		// failure would quietly weaken brute-force/flood detection — log it.
+		if err := s.store.CreateInboundEvent(ctx, store.InboundEvent{
 			NumberID:         num.ID,
 			Type:             req.Type,
 			Sender:           req.Sender,
 			Body:             req.Body,
 			MatchedSessionID: matchedID,
-		})
+		}); err != nil {
+			s.logger.Warn("record inbound event failed", "err", err, "number_id", num.ID)
+		}
 	}()
 
 	if blocked, _ := s.store.IsBlocked(ctx, req.Sender); blocked {
@@ -279,7 +288,9 @@ func (s *Service) Inbound(ctx context.Context, device store.Device, req InboundR
 	// Apply binding.
 	if sess.BindingMode == "claim" {
 		if sess.ClaimedMSISDN == nil || *sess.ClaimedMSISDN != req.Sender {
-			_ = s.store.IncrementAttempts(ctx, sess.ID)
+			if err := s.store.IncrementAttempts(ctx, sess.ID); err != nil {
+				s.logger.Warn("increment attempts failed", "err", err, "session", sess.ID)
+			}
 			s.maybeBlock(ctx, req.Sender)
 			return InboundResult{Matched: false, Reason: "claim_mismatch"}, nil
 		}
@@ -331,14 +342,22 @@ func (s *Service) matchSession(ctx context.Context, numberID string, req Inbound
 // The current failing event has not been recorded yet, so the +1 accounts for it.
 func (s *Service) maybeBlock(ctx context.Context, sender string) {
 	now := time.Now()
-	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFailWindow), true); err == nil && n+1 >= abuseFailThreshold {
+	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFailWindow), true); err != nil {
+		s.logger.Warn("abuse fail-count query failed", "err", err)
+	} else if n+1 >= abuseFailThreshold {
 		until := now.Add(abuseBlockDuration)
-		_ = s.store.CreateBlock(ctx, sender, "msisdn", "too many failed verification attempts", &until)
+		if err := s.store.CreateBlock(ctx, sender, "msisdn", "too many failed verification attempts", &until); err != nil {
+			s.logger.Warn("create block failed", "err", err, "sender", sender)
+		}
 		return
 	}
-	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFloodWindow), false); err == nil && n+1 >= abuseFloodThreshold {
+	if n, err := s.store.CountInboundBySender(ctx, sender, now.Add(-abuseFloodWindow), false); err != nil {
+		s.logger.Warn("abuse flood-count query failed", "err", err)
+	} else if n+1 >= abuseFloodThreshold {
 		until := now.Add(abuseBlockDuration)
-		_ = s.store.CreateBlock(ctx, sender, "msisdn", "too many inbound messages", &until)
+		if err := s.store.CreateBlock(ctx, sender, "msisdn", "too many inbound messages", &until); err != nil {
+			s.logger.Warn("create block failed", "err", err, "sender", sender)
+		}
 	}
 }
 

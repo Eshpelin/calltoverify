@@ -187,15 +187,15 @@ func New(ctx context.Context, opts Options) (*Engine, error) {
 	var nonces deviceapi.NonceStore = auth.NewNonceCache(10 * time.Minute)
 	if opts.RedisURL != "" {
 		if rc, rerr := redisutil.Connect(ctx, opts.RedisURL); rerr == nil {
-			limiter = ratelimit.NewRedis(rc, 60)
-			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute)
+			limiter = ratelimit.NewRedis(rc, 60, logger)
+			nonces = auth.NewRedisNonceCache(rc, 10*time.Minute, false, logger)
 			logger.Info("redis: sharing rate-limit + nonce across instances")
 		} else {
 			logger.Warn("redis unavailable; using in-process rate-limit + nonce", "err", rerr)
 		}
 	}
 
-	svc := verify.NewService(st, callbackNotifier{cb: opts.OnVerified}, limiter, codeLen, ttl)
+	svc := verify.NewService(st, callbackNotifier{cb: opts.OnVerified}, limiter, codeLen, ttl, logger)
 	device := deviceapi.New(st, svc, nonces, logger)
 	return &Engine{store: st, svc: svc, device: device, app: app, logger: logger}, nil
 }

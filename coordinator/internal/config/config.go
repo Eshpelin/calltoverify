@@ -20,6 +20,10 @@ type Config struct {
 	// default (SSRF defense); enable only for single-tenant self-hosts whose
 	// webhook genuinely lives on a private/internal address. CTV_WEBHOOK_ALLOW_PRIVATE
 	WebhookAllowPrivate bool
+	// RedisFailClosed makes the shared nonce cache reject requests when Redis is
+	// unreachable (preserves replay protection at the cost of availability) instead
+	// of failing open. Off by default. CTV_REDIS_FAIL_CLOSED
+	RedisFailClosed bool
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -34,6 +38,7 @@ func Load() Config {
 		DefaultTTL:     time.Duration(getenvInt("CTV_DEFAULT_TTL_SECONDS", 90)) * time.Second,
 
 		WebhookAllowPrivate: getenvBool("CTV_WEBHOOK_ALLOW_PRIVATE", false),
+		RedisFailClosed:     getenvBool("CTV_REDIS_FAIL_CLOSED", false),
 	}
 }
 

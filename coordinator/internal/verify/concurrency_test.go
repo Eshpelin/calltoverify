@@ -95,7 +95,7 @@ func TestStartVoiceConcurrencyOneWinner(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			st := open(t)
 			app := seedOneVoiceNumber(t, st, "call", "+8801700000010")
-			svc := NewService(st, noopNotifier{}, allowAllLimiter{}, 6, time.Minute)
+			svc := NewService(st, noopNotifier{}, allowAllLimiter{}, 6, time.Minute, nil)
 
 			const n = 32
 			results := make([]error, n)
