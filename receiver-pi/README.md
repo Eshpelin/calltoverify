@@ -1,83 +1,106 @@
 # receiver-pi
 
-CallToVerify receiver for a Raspberry Pi (or any Linux box) with a GSM modem. It supports all
-three channels, including DTMF, which the Android receiver cannot do. It reports to the
-developer's backend using the same signed device protocol as the Android app.
+CallToVerify receiver for a Raspberry Pi (or any Linux box) with a GSM modem. It's the most capable
+receiver — it's the **only** one that can do DTMF — and it runs headless as an always-on service. It
+reports to your backend with the same signed protocol as the Android app.
+
+> **A phone is easier.** If you only need **SMS** and **missed call**, a spare Android phone
+> ([download the app](https://github.com/Eshpelin/calltoverify/releases/latest/download/calltoverify-receiver.apk),
+> install, scan a QR) is far less work. Use a Pi when you need **DTMF**, or want a dedicated headless box.
 
 > **Status: alpha.** The client, signing, and retry buffer are unit-tested here. The gammu and
-> Asterisk integration is glue that needs real hardware to run, so it is shipped as reviewed
-> configuration + scripts (not executed in CI).
+> Asterisk pieces are integration glue that needs real hardware, so they ship as reviewed
+> configuration + scripts (not run in CI).
 
-## What it does
+## What you need
 
-| Channel | How |
-|---|---|
-| **SMS** | `gammu-smsd` receives the SMS and calls `ctv-pi on-sms` (reads `SMS_1_NUMBER` / `SMS_1_TEXT`). |
-| **Missed call** | Asterisk dialplan captures the caller id, hangs up, and runs `ctv-pi on-call`. |
-| **DTMF** | Asterisk answers and an AGI script (`agi/ctv_dtmf.py`) collects the digits. |
+- A Raspberry Pi (3 / 4 / Zero 2 W are all fine) running Raspberry Pi OS, or any Linux box.
+- A **USB GSM modem or HAT with a SIM in it** — this is the part that takes effort. Make sure your
+  modem is exposed as a serial device (`/dev/ttyUSB*`).
+- Network access from the Pi to your CallToVerify backend.
 
-A `ctv-pi run` daemon keeps the device online with heartbeats and drains a durable retry buffer.
+## What each channel needs
 
-## Install
+Set up only what you need. Start with SMS; add Asterisk later only if you want voice.
+
+| Channel | Needs | Effort |
+|---|---|---|
+| **SMS** | `gammu-smsd` | easy |
+| **Missed call** | Asterisk + a GSM channel driver (e.g. `chan_dongle`) | involved |
+| **DTMF** | Asterisk (same as missed call) | involved |
+
+---
+
+## Setup, start to finish
+
+### 1. Install the `ctv-pi` tool
 
 ```bash
 cd receiver-pi
-pip install -e .        # provides the `ctv-pi` command
+pip install -e .            # provides the `ctv-pi` command
 ```
 
-## Pair and register
+### 2. Pair it with your backend
 
-A Pi has no camera, so it doesn't scan the pairing QR. In the console, choose **Add a device →
-Raspberry Pi** and it gives you a ready-to-paste `ctv-pi pair` command (the same credentials the QR
-would encode): `{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}`.
+A Pi has no camera, so it doesn't scan the QR. In your console choose **Add a device → Raspberry
+Pi**; it gives you a ready-to-paste command (the same credentials the QR would encode). SSH into the
+Pi and run it, then register:
 
 ```bash
 ctv-pi pair '{"endpoint":"https://your-backend/ctv","device_id":"...","device_secret":"..."}' \
-  --msisdn "+8801700000001"
-ctv-pi register     # announces the device; caches its number if not set
+  --msisdn "+8801700000001"     # the SIM's own phone number
+ctv-pi register                  # announces the device to your backend
 ```
 
-## SMS channel (gammu)
+### 3. Receive SMS (gammu)
 
 ```bash
 sudo apt install gammu gammu-smsd
-sudo cp contrib/gammu-smsd.conf.example /etc/gammu-smsd.conf   # edit device/connection
+sudo cp contrib/gammu-smsd.conf.example /etc/gammu-smsd.conf    # edit Device/Connection for your modem
 sudo systemctl enable --now gammu-smsd
 ```
 
-`RunOnReceive = ctv-pi on-sms` posts each inbound SMS to your backend.
+The example config sets `RunOnReceive = ctv-pi on-sms`, so every inbound SMS is reported to your
+backend. **At this point SMS verification works** — skip to *Test it* to confirm.
 
-## Missed-call and DTMF channels (Asterisk)
-
-Install Asterisk with a GSM channel driver (for example `chan_dongle`), then add the dialplan in
-`contrib/asterisk-extensions.conf.example` and copy `agi/ctv_dtmf.py` to the path it references.
-
-### DTMF voice prompt (optional)
-
-On a DTMF call the AGI plays a prompt, then collects the digits. By default it just plays a `beep`.
-To voice-guide the caller instead ("please enter the code shown on your screen, then press the pound
-key"), generate the prompt and point the receiver at it:
-
-```bash
-sudo apt install espeak-ng sox
-./contrib/make-dtmf-prompt.sh                       # writes ctv-enter-pin.wav (8 kHz mono)
-sudo cp ctv-enter-pin.wav /usr/share/asterisk/sounds/en/
-export CTV_DTMF_PROMPT=ctv-enter-pin                # or set "dtmf_prompt" in config.json
-```
-
-Any Asterisk sound name works as `CTV_DTMF_PROMPT`; record your own prompt if you prefer.
-
-## Run the heartbeat daemon
+### 4. Keep it online (systemd)
 
 ```bash
 sudo cp contrib/ctv-pi.service /etc/systemd/system/
-sudo systemctl enable --now ctv-pi
+sudo systemctl enable --now ctv-pi        # heartbeats + drains the durable retry buffer
 ```
+
+### 5. (Optional) Missed call + DTMF (Asterisk)
+
+Only needed for voice channels. Install Asterisk with a GSM channel driver (e.g. `chan_dongle`),
+add the dialplan from [`contrib/asterisk-extensions.conf.example`](contrib/asterisk-extensions.conf.example),
+and copy [`agi/ctv_dtmf.py`](agi/ctv_dtmf.py) to the path it references.
+
+**DTMF voice prompt (optional).** On a DTMF call the AGI plays a prompt, then collects the digits —
+by default just a `beep`. To voice-guide the caller ("please enter the code shown on your screen,
+then press the pound key"):
+
+```bash
+sudo apt install espeak-ng sox
+./contrib/make-dtmf-prompt.sh                     # writes ctv-enter-pin.wav (8 kHz mono)
+sudo cp ctv-enter-pin.wav /usr/share/asterisk/sounds/en/
+export CTV_DTMF_PROMPT=ctv-enter-pin              # or set "dtmf_prompt" in config.json
+```
+
+Any Asterisk sound name works as `CTV_DTMF_PROMPT`; record your own if you prefer.
+
+## Test it
+
+From your console, **Run a test** (channel `sms`), then text the shown code from any phone to the
+Pi's SIM number. The console should flip to **verified**. (For missed call / DTMF, test those
+channels once Asterisk is set up in step 5.)
+
+---
 
 ## Configuration
 
-Read from `~/.config/calltoverify/config.json` (written by `ctv-pi pair`), overridable by env:
-`CTV_ENDPOINT`, `CTV_DEVICE_ID`, `CTV_DEVICE_SECRET`, `CTV_MSISDN`, `CTV_QUEUE`.
+Read from `~/.config/calltoverify/config.json` (written by `ctv-pi pair`), overridable by environment:
+`CTV_ENDPOINT`, `CTV_DEVICE_ID`, `CTV_DEVICE_SECRET`, `CTV_MSISDN`, `CTV_QUEUE`, `CTV_DTMF_PROMPT`.
 
 ## Develop
 

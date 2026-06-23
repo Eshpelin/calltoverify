@@ -1,0 +1,44 @@
+name: Android APK
+
+# Builds the receiver APK and attaches it to the GitHub Release when a tag is
+# pushed (so downloads stay in sync with the source). Also runnable on demand
+# from the Actions tab, which uploads the APK as a workflow artifact.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # upload release assets
+
+jobs:
+  apk:
+    name: Build receiver APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: receiver-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Name it
+        run: cp app/build/outputs/apk/debug/app-debug.apk calltoverify-receiver.apk
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calltoverify-receiver-apk
+          path: receiver-android/calltoverify-receiver.apk
+      - name: Attach to the release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" calltoverify-receiver.apk --clobber \
+            || gh release create "$GITHUB_REF_NAME" calltoverify-receiver.apk \
+                 --title "$GITHUB_REF_NAME" --notes "CallToVerify Android receiver APK."

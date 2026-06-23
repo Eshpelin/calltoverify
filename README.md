@@ -35,6 +35,40 @@ verification session. You receive on a cheap spare Android phone or a Raspberry 
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/flow.png" width="760" alt="Flow: the end user sends an SMS, missed call, or DTMF from the number being verified to your receiver (a spare Android phone or Pi); the receiver reports the sender and code to your backend over signed HTTPS; the verified result is pushed back to your app, and the verified number is the sender." />
 </p>
 
+## Get started
+
+**What you need:** a computer to run the server, and **one spare Android phone with a SIM** (or a Raspberry Pi). No SMS gateway, no account, no Play Store.
+
+### 1. Start the server *(runs out of the box)*
+
+```bash
+git clone https://github.com/Eshpelin/calltoverify.git && cd calltoverify
+go run ./coordinator/examples/dashboard      # opens a console at http://localhost:8080
+```
+
+It uses a local SQLite file — nothing else to install or configure. No Go? `docker compose up --build` runs the same thing with Docker.
+
+### 2. Add your phone *(about 2 minutes)*
+
+1. On the phone, **[download the app](https://github.com/Eshpelin/calltoverify/releases/latest/download/calltoverify-receiver.apk)**. It is not on the Play Store (it needs restricted SMS/call permissions), so you sideload this APK — that's expected.
+2. Open the downloaded file, allow **install from unknown apps** if prompted, and tap **Install**.
+3. Open **CallToVerify** on the phone — it shows a *Scan to pair* screen.
+4. In the console, click **Add a device**, type the SIM's phone number, and a **QR** appears.
+5. **Scan the QR** with the app. The phone goes **online** in the console.
+
+### 3. Run a test
+
+In the console, click **Run a test** — it shows *"Text `4729` to +880…"*. Text that from any phone, and the console flips to **Verified ✓** with the sender's number. That is the whole loop.
+
+### 4. Put it in your app
+
+Your backend exposes two small routes and your front end drops in a widget. The exact front-end and back-end code is in **[docs/integration.md](docs/integration.md)**.
+
+> **What runs out of the box, and what needs setup**
+> - **Server / console** — runs as-is with Go or Docker (SQLite, zero config).
+> - **A receiver** — needs hardware: a spare Android phone with a SIM (download the app above), or a Raspberry Pi + USB GSM modem ([setup below](#run-it-on-a-raspberry-pi)).
+> - **Production** — point the engine at Postgres and serve it over HTTPS. Nothing else changes.
+
 ## Screenshots
 
 ### End-user experience
@@ -75,6 +109,8 @@ separate service and no database to run.
 
 The spare phone that holds the SIM. It scans a pairing QR, then shows a live connected status with
 the endpoint, provisioned numbers, and recent inbound activity.
+**[Download the APK](https://github.com/Eshpelin/calltoverify/releases/latest/download/calltoverify-receiver.apk)** (it's
+not on the Play Store — sideload it; see [Add your phone](#2-add-your-phone-about-2-minutes)).
 
 <p>
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/android-pairing.png" width="260" alt="Android scan-to-pair screen" />
@@ -273,23 +309,29 @@ each number caps how many pending sessions it will hold.
 
 ## Run it on a Raspberry Pi
 
-A Pi + a USB GSM modem is the most reliable receiver, and the only one that can do DTMF. The
-outline (full steps in [`receiver-pi/README.md`](receiver-pi)):
+A Pi + a USB GSM modem is a dedicated, always-on receiver and the **only** one that can do DTMF.
+It's more work than a phone, so only reach for it if you need DTMF or want a headless box —
+for plain SMS and missed call, the [phone](#2-add-your-phone-about-2-minutes) is much easier.
 
-1. **Hardware:** a Raspberry Pi and a USB GSM modem (or HAT) with a SIM.
-2. **Install:** `cd receiver-pi && pip install -e .` (gives you the `ctv-pi` command).
+Set up only what you need; SMS works after step 4, and Asterisk (step 5) is just for voice.
+**Full, ordered guide: [`receiver-pi/README.md`](receiver-pi).** The short version:
+
+1. **Hardware:** a Raspberry Pi and a USB GSM modem (or HAT) with a SIM in it.
+2. **Install the tool:** `cd receiver-pi && pip install -e .` (gives you the `ctv-pi` command).
 3. **Pair:** in the console, **Add a device → Raspberry Pi**. A Pi has no camera, so instead of a
-   QR the console gives you a ready-to-paste command. SSH into the Pi and run it, then `ctv-pi register`:
+   QR you get a ready-to-paste command. SSH into the Pi and run it, then register:
 
    ```sh
    ctv-pi pair '{"endpoint":"https://verify.yourapp.com/ctv","device_id":"…","device_secret":"…"}' --msisdn "+8801700000001"
    ctv-pi register
    ```
-4. **SMS** (via gammu): `sudo apt install gammu-smsd` and point its `RunOnReceive` at `ctv-pi on-sms`.
-5. **Missed call / DTMF** (via Asterisk): add the provided dialplan + AGI script.
-6. **Keep it online:** install the `ctv-pi run` systemd service (heartbeats + retry buffer).
+4. **SMS** (easy): `sudo apt install gammu-smsd`, copy the example config, and its `RunOnReceive`
+   calls `ctv-pi on-sms`. **SMS verification works now.**
+5. **Missed call / DTMF** (optional, more involved): install Asterisk + a GSM driver and add the
+   provided dialplan + AGI script. Only needed for voice channels.
+6. **Keep it online:** install the `ctv-pi` systemd service (heartbeats + a durable retry buffer).
 
-The console gives you that exact command (and a copy button) when you add a Raspberry Pi:
+The console gives you that exact pairing command (with a copy button) when you add a Raspberry Pi:
 
 <p>
   <img src="https://raw.githubusercontent.com/Eshpelin/calltoverify/main/docs/screenshots/console-add-pi.png" width="820" alt="Console Add-a-device with Raspberry Pi selected: a ready-to-paste ctv-pi pair command over SSH instead of a QR, with the QR available as a fallback." />
@@ -311,7 +353,7 @@ the Python receiver client and verifies a number over HTTP.
 | [`sdk-client-react`](sdk-client-react) | React component | SSR tests (CI) |
 | [`sdk-client-flutter`](sdk-client-flutter) | Flutter client | `flutter test` (CI) |
 | [`receiver-pi`](receiver-pi) | Raspberry Pi receiver (SMS/missed-call/DTMF) | Client/signing unit-tested (CI) + E2E |
-| [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) | Builds (Gradle); paired + SMS-verified on an Android emulator |
+| [`receiver-android`](receiver-android) | Android receiver (SMS/missed-call) — [downloadable APK](https://github.com/Eshpelin/calltoverify/releases/latest) | Builds (Gradle); paired + SMS-verified on an Android emulator |
 
 Remaining roadmap: hardening (Play Integrity attestation, Redis-backed rate-limit/nonce for
 multi-instance deployments, hosted SaaS). Per-SIM voice queueing, an ops dashboard, the
