@@ -46,7 +46,7 @@ func main() {
 	}
 	logger.Info("migrations applied")
 
-	wh := webhook.New(logger)
+	wh := webhook.New(logger, cfg.WebhookAllowPrivate)
 
 	// Rate-limit + replay-nonce: in-process by default; Redis-backed (shared across
 	// instances) when CTV_REDIS_URL points at a reachable Redis.

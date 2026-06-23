@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
@@ -19,11 +22,74 @@ type Sender struct {
 	logger *slog.Logger
 }
 
-func New(logger *slog.Logger) *Sender {
+// New builds a webhook sender. Unless allowPrivate is true, delivery refuses to
+// connect to loopback/private/link-local addresses (SSRF defense: webhook_url is
+// developer-supplied and the coordinator dereferences it from inside its own
+// network). It also never follows redirects.
+func New(logger *slog.Logger, allowPrivate bool) *Sender {
 	return &Sender{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: safeClient(allowPrivate),
 		logger: logger,
 	}
+}
+
+// ValidateURL is a cheap, write-time check on a developer-supplied webhook URL.
+// The authoritative SSRF guard is the dial-time IP check in safeClient; this just
+// rejects obviously-wrong values early with a clear message.
+func ValidateURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("not a valid URL")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("scheme must be http or https")
+	}
+	if u.Hostname() == "" {
+		return fmt.Errorf("missing host")
+	}
+	return nil
+}
+
+// safeClient returns an HTTP client whose dialer resolves the target and refuses
+// to connect to non-public addresses (defeating SSRF and DNS-rebinding by dialing
+// the exact IP it validated), and which does not follow redirects.
+func safeClient(allowPrivate bool) *http.Client {
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	tr := &http.Transport{
+		ForceAttemptHTTP2: true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil || len(ips) == 0 {
+				return nil, fmt.Errorf("webhook: cannot resolve %s", host)
+			}
+			ip := ips[0].IP
+			if !allowPrivate && isDisallowedIP(ip) {
+				return nil, fmt.Errorf("webhook: refusing to connect to non-public address %s", ip)
+			}
+			// Dial the exact IP we validated (TLS still verifies the original host).
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		},
+	}
+	return &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: tr,
+		// Do not follow redirects — a 3xx to an internal address would bypass the
+		// dial-time check on the original URL.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
+
+// isDisallowedIP reports whether ip is a non-public address a webhook must not
+// reach: loopback, RFC1918/ULA private, link-local (incl. 169.254.169.254 cloud
+// metadata), multicast, or unspecified.
+func isDisallowedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() ||
+		ip.IsMulticast() || ip.IsUnspecified()
 }
 
 type payload struct {
