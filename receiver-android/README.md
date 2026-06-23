@@ -23,11 +23,18 @@ device "online" with periodic heartbeats and drains a durable retry buffer.
 Standard Gradle Android build (Kotlin DSL, Compose):
 
 ```sh
-./gradlew :app:assembleDebug      # debug APK
-./gradlew :app:assembleRelease    # release APK (un-minified by default)
+./gradlew :app:assembleDebug      # debug APK (debuggable; for local development only)
+./gradlew :app:assembleRelease    # release APK (non-debuggable; the published artifact)
 ```
 
 Requires JDK 17+ and the Android SDK (compileSdk 34, minSdk 24). The Gradle wrapper is checked in.
+
+**Distribute the release build, never the debug build.** A debug APK is `debuggable`, so anyone
+with ADB access can `run-as` the app and read the stored `device_secret`. The release build is
+non-debuggable; sign it by setting `CTV_KEYSTORE_FILE`, `CTV_KEYSTORE_PASSWORD`, `CTV_KEY_ALIAS`,
+and `CTV_KEY_PASSWORD` (the `Android APK` CI workflow does this and attaches the result to the
+release). The camera-less pairing intent and the localhost cleartext exception exist in **debug
+builds only**.
 
 ## Test it on an emulator
 

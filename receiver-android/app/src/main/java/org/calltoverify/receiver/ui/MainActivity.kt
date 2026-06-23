@@ -19,6 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.calltoverify.receiver.BuildConfig
 import org.calltoverify.receiver.ReceiverApp
 import org.calltoverify.receiver.ReceiverRepository
 import org.calltoverify.receiver.data.Pairing
@@ -59,9 +60,10 @@ class MainActivity : ComponentActivity() {
 
         cameraGranted.value = hasCameraPermission()
 
-        // Allow pairing without the camera (camera-less devices, automated tests):
-        //   adb shell am start -n org.calltoverify.receiver/.ui.MainActivity \
-        //     --es ctv_pairing '{"endpoint":"...","device_id":"...","device_secret":"..."}'
+        // Camera-less / automated pairing via an intent extra. Debug builds only:
+        // MainActivity is exported (it is the launcher), so honoring this extra in a
+        // release build would let any installed app pair the receiver to an attacker
+        // endpoint. Production pairing is QR-scan only.
         handlePairingIntent(intent)
 
         setContent {
@@ -95,8 +97,10 @@ class MainActivity : ComponentActivity() {
         handlePairingIntent(intent)
     }
 
-    /** Pairs from an intent extra if present (camera-less / automated pairing). */
+    /** Pairs from an intent extra if present (camera-less / automated pairing).
+     *  Debug builds only — see the note in onCreate. */
     private fun handlePairingIntent(intent: Intent?) {
+        if (!BuildConfig.DEBUG) return
         val payload = intent?.getStringExtra("ctv_pairing")?.takeIf { it.isNotBlank() } ?: return
         if (repository.paired.value) return
         onQrScanned(payload) { /* UI reflects the result via repository.paired */ }
