@@ -12,11 +12,11 @@ import (
 // (in-memory) always runs; Postgres runs only when CTV_TEST_DATABASE_URL is set
 // (the same gate the API integration tests use). Each scenario runs identically
 // against every backend so divergence in the SQL surfaces immediately.
-func backends(t *testing.T) map[string]func(t *testing.T) Store {
+func backends(t *testing.T, opts ...Option) map[string]func(t *testing.T) Store {
 	t.Helper()
 	m := map[string]func(t *testing.T) Store{
 		"sqlite": func(t *testing.T) Store {
-			st, err := NewSQLite(":memory:")
+			st, err := NewSQLite(":memory:", opts...)
 			if err != nil {
 				t.Fatalf("sqlite open: %v", err)
 			}
@@ -29,7 +29,7 @@ func backends(t *testing.T) map[string]func(t *testing.T) Store {
 	}
 	if dsn := os.Getenv("CTV_TEST_DATABASE_URL"); dsn != "" {
 		m["postgres"] = func(t *testing.T) Store {
-			st, err := NewPostgres(context.Background(), dsn)
+			st, err := NewPostgres(context.Background(), dsn, opts...)
 			if err != nil {
 				t.Fatalf("postgres open: %v", err)
 			}
@@ -47,9 +47,10 @@ func backends(t *testing.T) map[string]func(t *testing.T) Store {
 	return m
 }
 
-// runParity runs fn against every available backend as a subtest.
-func runParity(t *testing.T, fn func(t *testing.T, st Store)) {
-	for name, open := range backends(t) {
+// runParity runs fn against every available backend as a subtest. Store options
+// (e.g. WithMaxPending) are forwarded to each backend's constructor.
+func runParity(t *testing.T, fn func(t *testing.T, st Store), opts ...Option) {
+	for name, open := range backends(t, opts...) {
 		t.Run(name, func(t *testing.T) {
 			fn(t, open(t))
 		})
