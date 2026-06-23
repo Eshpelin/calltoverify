@@ -59,6 +59,7 @@ CREATE INDEX IF NOT EXISTS sessions_app_status ON sessions(app_id, status);
 CREATE TABLE IF NOT EXISTS inbound_events (
   id TEXT PRIMARY KEY, number_id TEXT, type TEXT NOT NULL, sender TEXT NOT NULL,
   body TEXT, matched_session_id TEXT, received_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS inbound_events_sender_time ON inbound_events (sender, received_at);
 CREATE TABLE IF NOT EXISTS blocks (
   id TEXT PRIMARY KEY, target TEXT NOT NULL, kind TEXT NOT NULL, reason TEXT,
   until TEXT, created_at TEXT NOT NULL);
