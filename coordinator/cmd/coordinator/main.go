@@ -46,6 +46,24 @@ func main() {
 	}
 	logger.Info("migrations applied")
 
+	// Optional secret-at-rest encryption: wrap the store so device/webhook secrets
+	// are AES-256-GCM encrypted in the database. defer st.Close() above still closes
+	// the underlying DB (the wrapper embeds it).
+	if cfg.SecretKey != "" {
+		key, err := store.DecodeSecretKey(cfg.SecretKey)
+		if err != nil {
+			logger.Error("CTV_SECRET_KEY invalid", "err", err)
+			os.Exit(1)
+		}
+		enc, err := store.NewEncrypted(st, key)
+		if err != nil {
+			logger.Error("enable secret encryption", "err", err)
+			os.Exit(1)
+		}
+		st = enc
+		logger.Info("secret-at-rest encryption enabled")
+	}
+
 	wh := webhook.New(logger, cfg.WebhookAllowPrivate)
 
 	// Rate-limit + replay-nonce: in-process by default; Redis-backed (shared across

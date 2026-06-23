@@ -30,6 +30,10 @@ type Config struct {
 	// InboundRetention is how long inbound_events audit rows are kept before the
 	// sweep prunes them. CTV_INBOUND_RETENTION_DAYS
 	InboundRetention time.Duration
+	// SecretKey, when set, enables AES-256-GCM encryption of device_secret and
+	// webhook_secret at rest. 32 bytes as hex or base64. Empty = plaintext (legacy,
+	// still readable after the key is enabled). CTV_SECRET_KEY
+	SecretKey string
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -47,6 +51,7 @@ func Load() Config {
 		RedisFailClosed:     getenvBool("CTV_REDIS_FAIL_CLOSED", false),
 		MaxInFlight:         getenvInt("CTV_MAX_INFLIGHT", 512),
 		InboundRetention:    time.Duration(getenvInt("CTV_INBOUND_RETENTION_DAYS", 30)) * 24 * time.Hour,
+		SecretKey:           getenv("CTV_SECRET_KEY", ""),
 	}
 }
 
