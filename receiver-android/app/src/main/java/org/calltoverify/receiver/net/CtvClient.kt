@@ -35,14 +35,18 @@ class CtvClient(private val pairing: Pairing) {
     companion object {
         private const val TAG = "CtvClient"
         private val JSON = "application/json; charset=utf-8".toMediaType()
-    }
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+        // OkHttp is designed to be shared: one client owns one connection pool and
+        // dispatcher thread pool, reused across all calls. Building one per CtvClient
+        // (and we build a CtvClient per register/heartbeat/inbound) defeats keep-alive
+        // and leaks dispatcher threads, so the client is a single shared instance.
+        private val http: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     /** Outcome of a device call: either a parsed value, or a typed failure. */
     sealed interface Outcome<out T> {

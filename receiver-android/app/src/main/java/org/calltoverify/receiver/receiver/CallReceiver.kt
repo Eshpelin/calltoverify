@@ -50,6 +50,9 @@ class CallReceiver : BroadcastReceiver() {
         @Volatile
         private var lastHandledAtMillis: Long = 0L
 
+        /** Serializes the dedupe check-and-update against concurrent broadcasts. */
+        private val dedupeLock = Any()
+
         /** Repeat broadcasts for the same call arrive within a couple seconds. */
         private const val DEDUPE_WINDOW_MS = 5_000L
     }
@@ -70,13 +73,17 @@ class CallReceiver : BroadcastReceiver() {
             return
         }
 
-        // De-duplicate the repeated RINGING broadcasts for one physical call.
+        // De-duplicate the repeated RINGING broadcasts for one physical call. The
+        // check-and-update must be atomic: two broadcasts can arrive nearly together
+        // and otherwise both pass the window.
         val now = System.currentTimeMillis()
-        if (number == lastHandledNumber && now - lastHandledAtMillis < DEDUPE_WINDOW_MS) {
-            return
+        synchronized(dedupeLock) {
+            if (number == lastHandledNumber && now - lastHandledAtMillis < DEDUPE_WINDOW_MS) {
+                return
+            }
+            lastHandledNumber = number
+            lastHandledAtMillis = now
         }
-        lastHandledNumber = number
-        lastHandledAtMillis = now
 
         val repository = ReceiverApp.repository
         if (!repository.paired.value) {
