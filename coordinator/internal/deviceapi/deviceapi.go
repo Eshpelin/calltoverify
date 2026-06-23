@@ -9,11 +9,13 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Eshpelin/calltoverify/coordinator/internal/auth"
+	"github.com/Eshpelin/calltoverify/coordinator/internal/ratelimit"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/store"
 	"github.com/Eshpelin/calltoverify/coordinator/internal/verify"
 )
@@ -34,14 +36,27 @@ type NonceStore interface {
 }
 
 type Handler struct {
-	store  store.Store
-	svc    *verify.Service
-	nonces NonceStore
-	logger *slog.Logger
+	store   store.Store
+	svc     *verify.Service
+	nonces  NonceStore
+	logger  *slog.Logger
+	preauth *ratelimit.Limiter // bounds unauthenticated work (body read + device lookup) per source IP
 }
 
 func New(st store.Store, svc *verify.Service, nonces NonceStore, logger *slog.Logger) *Handler {
-	return &Handler{store: st, svc: svc, nonces: nonces, logger: logger}
+	// A generous per-IP budget: legitimate receivers heartbeat ~1/min, so this is
+	// pure abuse protection — it caps how fast one source can force pre-signature
+	// body reads + device lookups, without affecting real traffic. Per instance.
+	return &Handler{store: st, svc: svc, nonces: nonces, logger: logger, preauth: ratelimit.New(600, 100)}
+}
+
+// clientIP is the source address used to key the pre-auth limiter. It uses the
+// transport peer (RemoteAddr), not a spoofable X-Forwarded-For header.
+func clientIP(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // Mux returns the device routes under relative paths, ready to be mounted with a
@@ -76,14 +91,22 @@ func (h *Handler) Auth(next http.HandlerFunc) http.HandlerFunc {
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "timestamp outside allowed skew")
 			return
 		}
+		// Throttle before the (still unauthenticated) body read + device lookup so a
+		// single source cannot drive that work without a valid signature.
+		if !h.preauth.Allow("devauth:" + clientIP(r)) {
+			writeErr(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
+			return
+		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 		if err != nil {
 			writeErr(w, http.StatusRequestEntityTooLarge, "too_large", "request body too large")
 			return
 		}
+		// A single generic error for unknown-device and bad-signature: distinct
+		// messages would let an unauthenticated caller enumerate valid device ids.
 		device, err := h.store.GetDeviceByID(r.Context(), id)
 		if errors.Is(err, store.ErrNotFound) {
-			writeErr(w, http.StatusUnauthorized, "unauthorized", "unknown device")
+			writeErr(w, http.StatusUnauthorized, "unauthorized", "invalid device credentials")
 			return
 		}
 		if err != nil {
@@ -91,7 +114,7 @@ func (h *Handler) Auth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if !auth.ConstantTimeEqual(sig, auth.DeviceSignature(device.DeviceSecret, ts, nonce, body)) {
-			writeErr(w, http.StatusUnauthorized, "unauthorized", "bad signature")
+			writeErr(w, http.StatusUnauthorized, "unauthorized", "invalid device credentials")
 			return
 		}
 		if h.nonces.Seen(nonce, now) {
