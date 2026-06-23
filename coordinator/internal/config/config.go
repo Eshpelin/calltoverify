@@ -24,6 +24,12 @@ type Config struct {
 	// unreachable (preserves replay protection at the cost of availability) instead
 	// of failing open. Off by default. CTV_REDIS_FAIL_CLOSED
 	RedisFailClosed bool
+	// MaxInFlight caps concurrent in-flight HTTP requests; excess get 503 so a
+	// flood of slow connections can't exhaust goroutines/DB connections. CTV_MAX_INFLIGHT
+	MaxInFlight int
+	// InboundRetention is how long inbound_events audit rows are kept before the
+	// sweep prunes them. CTV_INBOUND_RETENTION_DAYS
+	InboundRetention time.Duration
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -39,6 +45,8 @@ func Load() Config {
 
 		WebhookAllowPrivate: getenvBool("CTV_WEBHOOK_ALLOW_PRIVATE", false),
 		RedisFailClosed:     getenvBool("CTV_REDIS_FAIL_CLOSED", false),
+		MaxInFlight:         getenvInt("CTV_MAX_INFLIGHT", 512),
+		InboundRetention:    time.Duration(getenvInt("CTV_INBOUND_RETENTION_DAYS", 30)) * 24 * time.Hour,
 	}
 }
 
