@@ -21,15 +21,36 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            // Supplied by CI (or a maintainer) via env. Without them the release
+            // build is left unsigned rather than falling back to the public debug
+            // key — but it is still non-debuggable, which is the property that
+            // matters for protecting the on-device device_secret.
+            System.getenv("CTV_KEYSTORE_FILE")?.let { ks ->
+                storeFile = file(ks)
+                storePassword = System.getenv("CTV_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CTV_KEY_ALIAS")
+                keyPassword = System.getenv("CTV_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             // Sideloaded, open-source build: keep it un-minified so the APK is
             // easy to inspect and reproduce. Flip these on for size if desired.
             isMinifyEnabled = false
+            // Never ship a debuggable receiver: debuggable=true lets anyone with
+            // ADB run-as the app and recover the device_secret.
+            isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (System.getenv("CTV_KEYSTORE_FILE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -44,6 +65,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true // exposes BuildConfig.DEBUG to gate the test-only pairing intent
     }
 
     composeOptions {
