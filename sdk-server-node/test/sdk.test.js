@@ -117,6 +117,18 @@ test("verifyWebhook accepts a valid signature and rejects a bad one", () => {
   assert.throws(() => ctv.verifyWebhook(body, tampered), CallToVerifyError);
 });
 
+test("verifyWebhook maxAgeSeconds rejects stale, accepts fresh, is opt-in", () => {
+  const secret = "whsec_test";
+  const ctv = new CallToVerify({ baseUrl: "http://unused", apiKey: "k", webhookSecret: secret });
+  const sign = (b) => createHmac("sha256", secret).update(b).digest("hex");
+  const fresh = JSON.stringify({ event: "verification.verified", session_id: "s", channel: "sms", ts: new Date().toISOString() });
+  const stale = JSON.stringify({ event: "verification.verified", session_id: "s", channel: "sms", ts: "2000-01-01T00:00:00Z" });
+
+  assert.equal(ctv.verifyWebhook(fresh, sign(fresh), 300).sessionId, "s"); // within window
+  assert.throws(() => ctv.verifyWebhook(stale, sign(stale), 300), CallToVerifyError); // too old
+  assert.equal(ctv.verifyWebhook(stale, sign(stale)).sessionId, "s"); // no window -> accepted
+});
+
 test("verifyWebhook matches the cross-language known-answer vector", () => {
   // Pinned digest mirrored in the Go, Python, and PHP suites. The body is a fixed
   // compact JSON byte string -- the signature is over these exact bytes, asserted

@@ -12,6 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 __all__ = [
@@ -119,9 +120,18 @@ class CallToVerify:
             verified_msisdn=data.get("verified_msisdn") or None,
         )
 
-    def verify_webhook(self, raw_body: Union[str, bytes], signature: str) -> WebhookEvent:
+    def verify_webhook(
+        self,
+        raw_body: Union[str, bytes],
+        signature: str,
+        max_age_seconds: Optional[int] = None,
+    ) -> WebhookEvent:
         """Verify and parse a webhook. Pass the RAW request body and the
-        X-CTV-Signature header. Raises CallToVerifyError on signature mismatch."""
+        X-CTV-Signature header. Raises CallToVerifyError on signature mismatch.
+
+        Pass max_age_seconds to also reject events whose ``ts`` is outside that
+        window (replay defense). De-dupe on session_id for idempotency regardless.
+        """
         if not self._webhook_secret:
             raise ValueError("webhook_secret is required to verify webhooks")
         raw = raw_body.encode() if isinstance(raw_body, str) else raw_body
@@ -129,6 +139,13 @@ class CallToVerify:
         if not hmac.compare_digest(expected, signature):
             raise CallToVerifyError(401, "invalid_signature", "webhook signature mismatch")
         p = json.loads(raw.decode())
+        if max_age_seconds is not None:
+            try:
+                ts = datetime.fromisoformat(str(p.get("ts", "")).replace("Z", "+00:00"))
+            except ValueError:
+                ts = None
+            if ts is None or abs((datetime.now(timezone.utc) - ts).total_seconds()) > max_age_seconds:
+                raise CallToVerifyError(401, "webhook_expired", "webhook timestamp outside the allowed window")
         return WebhookEvent(
             event=p["event"],
             session_id=p["session_id"],

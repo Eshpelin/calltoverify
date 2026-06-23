@@ -118,6 +118,26 @@ class ClientTest(unittest.TestCase):
         with self.assertRaises(CallToVerifyError):
             ctv.verify_webhook(body, "deadbeef")
 
+    def test_verify_webhook_max_age(self):
+        from datetime import datetime, timezone
+
+        secret = "whsec_test"
+        ctv = CallToVerify("http://unused", "k", webhook_secret=secret)
+
+        def signed(ts):
+            body = json.dumps({"event": "verification.verified", "session_id": "s", "channel": "sms", "ts": ts})
+            sig = hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()
+            return body, sig
+
+        fresh, fresh_sig = signed(datetime.now(timezone.utc).isoformat())
+        stale, stale_sig = signed("2000-01-01T00:00:00Z")
+
+        self.assertEqual(ctv.verify_webhook(fresh, fresh_sig, max_age_seconds=300).session_id, "s")
+        with self.assertRaises(CallToVerifyError):
+            ctv.verify_webhook(stale, stale_sig, max_age_seconds=300)
+        # No window -> stale still accepted (backward compatible).
+        self.assertEqual(ctv.verify_webhook(stale, stale_sig).session_id, "s")
+
     def test_verify_webhook_known_answer_vector(self):
         # Cross-language known-answer vector for webhook signing (body-only HMAC).
         # This pinned digest is mirrored in the Go, Node, and PHP suites. The body
