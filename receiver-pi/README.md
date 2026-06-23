@@ -74,7 +74,9 @@ sudo systemctl enable --now ctv-pi        # heartbeats + drains the durable retr
 
 Only needed for voice channels. Install Asterisk with a GSM channel driver (e.g. `chan_dongle`),
 add the dialplan from [`contrib/asterisk-extensions.conf.example`](contrib/asterisk-extensions.conf.example),
-and copy [`agi/ctv_dtmf.py`](agi/ctv_dtmf.py) to the path it references.
+and copy the AGI scripts [`agi/ctv_oncall.py`](agi/ctv_oncall.py) (missed call) and
+[`agi/ctv_dtmf.py`](agi/ctv_dtmf.py) (DTMF) to the paths it references. Both read the caller id from
+the AGI environment, not a shell, so a spoofed caller id cannot inject commands.
 
 **DTMF voice prompt (optional).** On a DTMF call the AGI plays a prompt, then collects the digits —
 by default just a `beep`. To voice-guide the caller ("please enter the code shown on your screen,
