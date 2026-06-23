@@ -45,7 +45,11 @@ func (l *RedisLimiter) Allow(key string) bool {
 		l.logger.Info("redis rate-limiter recovered")
 	}
 	if n == 1 {
-		l.client.Expire(ctx, rk, 70*time.Second)
+		// Set the window TTL only on the first increment. If this fails the key
+		// would never expire and the window would never reset, so log it.
+		if err := l.client.Expire(ctx, rk, 70*time.Second).Err(); err != nil {
+			l.logger.Warn("redis rate-limiter: failed to set window expiry", "key", rk, "err", err)
+		}
 	}
 	return n <= int64(l.rate)
 }
